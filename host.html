@@ -2,250 +2,246 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>🎊 婚禮問答 - 賓客作答</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎮 婚禮問答 - 主持人控制台</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
 <style>
   :root {
     --pink: #FF6B9D; --yellow: #FFD93D; --mint: #6BCB77;
-    --sky: #4D96FF; --orange: #FF9F43; --coral: #FF7675;
-    --dark: #2D3436; --shadow: 0 6px 0px rgba(0,0,0,0.15);
+    --sky: #4D96FF; --orange: #FF9F43; --purple: #A29BFE;
+    --coral: #FF7675; --dark: #2D3436;
+    --shadow: 0 6px 0px rgba(0,0,0,0.15);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Nunito', sans-serif;
-    background: linear-gradient(160deg, #FFF0F5 0%, #F0F8FF 50%, #F0FFF4 100%);
-    min-height: 100vh; overflow-x: hidden;
+  body { font-family: 'Nunito', sans-serif; background: #1a1a2e; color: white; min-height: 100vh; }
+
+  .header {
+    background: linear-gradient(135deg, #FF6B9D, #FF9F43);
+    padding: 16px 24px; display: flex; align-items: center;
+    justify-content: space-between; box-shadow: 0 4px 20px rgba(255,107,157,0.4);
+  }
+  .header-title { font-family: 'Fredoka One', cursive; font-size: 1.6rem; }
+  .header-badge {
+    background: rgba(255,255,255,0.25); padding: 6px 16px;
+    border-radius: 20px; font-weight: 800; font-size: 0.9rem;
   }
 
-  .screen { display: none; min-height: 100vh; padding: 20px 16px; }
-  .screen.active { display: flex; flex-direction: column; }
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
 
-  /* ── Join Screen ── */
-  .join-wrap {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; text-align: center;
-  }
-  .join-emoji { font-size: 4rem; margin-bottom: 12px;
-    animation: bounce 2s ease-in-out infinite; }
-  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
-  .join-title {
-    font-family: 'Fredoka One', cursive; font-size: 2rem;
-    color: var(--pink); margin-bottom: 6px;
-  }
-  .join-sub { color: #999; font-weight: 700; font-size: 0.95rem; margin-bottom: 28px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media(max-width:700px) { .grid-2 { grid-template-columns: 1fr; } }
 
-  .join-card {
-    background: white; border-radius: 24px; padding: 28px 24px;
-    box-shadow: var(--shadow), 0 0 0 3px rgba(255,107,157,0.08);
-    width: 100%; max-width: 360px;
+  .card {
+    background: #16213e; border-radius: 20px; padding: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
   }
-  input[type="text"] {
-    width: 100%; padding: 14px 18px; border: 2.5px solid #F0F0F0;
-    border-radius: 16px; font-family: 'Nunito', sans-serif;
-    font-size: 1rem; font-weight: 700; outline: none;
-    transition: border-color 0.2s; margin-bottom: 14px;
-    background: #FAFAFA; color: var(--dark);
+  .card-title {
+    font-family: 'Fredoka One', cursive; font-size: 1.2rem;
+    color: var(--yellow); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
   }
-  input:focus { border-color: var(--pink); background: white; }
 
   .btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; padding: 14px; border: none; border-radius: 50px;
-    font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 24px; border: none; border-radius: 50px;
+    font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 800;
     cursor: pointer; transition: all 0.15s; box-shadow: var(--shadow);
   }
-  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.1); }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(2px); box-shadow: none; }
   .btn-pink   { background: var(--pink); color: white; }
   .btn-mint   { background: var(--mint); color: white; }
   .btn-sky    { background: var(--sky);  color: white; }
   .btn-yellow { background: var(--yellow); color: var(--dark); }
+  .btn-coral  { background: var(--coral); color: white; }
+  .btn-gray   { background: #2d3436; color: #b2bec3; border: 1px solid #4a5568; }
+  .btn-full   { width: 100%; margin-bottom: 10px; }
+  .btn-lg     { padding: 16px 32px; font-size: 1.1rem; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-  /* ── Waiting Screen ── */
-  .waiting-wrap {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; text-align: center; gap: 16px;
+  input, textarea, select {
+    width: 100%; padding: 10px 14px; border-radius: 12px;
+    border: 1.5px solid rgba(255,255,255,0.1); background: #0f3460;
+    color: white; font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600;
+    outline: none; transition: border-color 0.2s; margin-bottom: 10px;
   }
-  .waiting-avatar {
-    width: 80px; height: 80px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--pink), var(--orange));
+  input:focus, textarea:focus, select:focus { border-color: var(--pink); }
+  textarea { min-height: 60px; resize: vertical; }
+  label { font-size: 0.82rem; color: #a0aec0; font-weight: 700; margin-bottom: 4px; display: block; }
+
+  .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .choice-row { display: flex; align-items: center; gap: 6px; }
+  .choice-dot {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 2.5rem; box-shadow: var(--shadow);
+    font-weight: 900; font-size: 0.8rem; color: white;
   }
-  .waiting-name { font-family: 'Fredoka One', cursive; font-size: 1.5rem; color: var(--dark); }
-  .waiting-msg { color: #999; font-weight: 700; font-size: 0.9rem; }
-  .waiting-dots span {
-    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-    background: var(--pink); margin: 0 3px;
-    animation: dotPulse 1.4s ease-in-out infinite;
-  }
-  .waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes dotPulse { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+  .dot-A { background: var(--coral); } .dot-B { background: var(--sky); }
+  .dot-C { background: var(--yellow); color: var(--dark); } .dot-D { background: var(--mint); }
+  .choice-row input { margin: 0; flex: 1; }
+  .star-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; transition: transform 0.15s; padding: 0 4px; }
+  .star-btn:hover { transform: scale(1.3); }
 
-  /* ── Question Screen ── */
-  .q-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 16px;
+  /* Question list */
+  .q-item {
+    display: flex; align-items: center; gap: 10px;
+    background: #0f3460; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+    border-left: 4px solid var(--pink);
   }
-  .q-progress { font-weight: 800; color: #888; font-size: 0.88rem; }
-  .timer-wrap {
-    width: 56px; height: 56px; position: relative; flex-shrink: 0;
-  }
-  .timer-svg { transform: rotate(-90deg); }
-  .t-track { fill: none; stroke: #F0F0F0; stroke-width: 5; }
-  .t-fill  { fill: none; stroke: var(--pink); stroke-width: 5; stroke-linecap: round;
-             transition: stroke-dashoffset 1s linear, stroke 0.5s; }
-  .timer-num {
-    position: absolute; inset: 0; display: flex; align-items: center;
-    justify-content: center; font-family: 'Fredoka One', cursive;
-    font-size: 1.2rem; color: var(--dark);
+  .q-item-num { font-family: 'Fredoka One', cursive; color: var(--pink); font-size: 1rem; flex-shrink: 0; }
+  .q-item-text { flex: 1; font-weight: 700; font-size: 0.88rem; line-height: 1.3; }
+  .q-item-type {
+    font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;
+    background: rgba(255,255,255,0.1); color: #a0aec0; flex-shrink: 0;
   }
 
-  .q-card {
-    background: white; border-radius: 20px; padding: 22px;
-    text-align: center; margin-bottom: 18px;
-    box-shadow: var(--shadow), 0 0 0 3px rgba(255,107,157,0.08);
+  /* Game control */
+  .quiz-id-display {
+    background: linear-gradient(135deg, #0f3460, #162447);
+    border-radius: 16px; padding: 20px; text-align: center; margin-bottom: 16px;
+    border: 2px solid var(--yellow);
   }
-  .q-emoji { font-size: 2.2rem; margin-bottom: 8px; }
-  .q-text  { font-family: 'Fredoka One', cursive; font-size: 1.25rem; color: var(--dark); line-height: 1.4; }
-
-  .options-mc { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .options-tf { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-  .opt-btn {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 6px; padding: 18px 12px; border: none; border-radius: 18px;
-    cursor: pointer; font-family: 'Nunito', sans-serif; font-weight: 800;
-    font-size: 0.88rem; text-align: center; color: white;
-    box-shadow: var(--shadow); transition: all 0.12s;
-    min-height: 80px; line-height: 1.3;
+  .quiz-id-label { font-size: 0.82rem; color: #a0aec0; font-weight: 700; margin-bottom: 6px; }
+  .quiz-id-val {
+    font-family: 'Fredoka One', cursive; font-size: 2rem; color: var(--yellow);
+    letter-spacing: 4px; word-break: break-all;
   }
-  .opt-btn:active { transform: scale(0.95); }
-  .opt-btn:disabled { cursor: not-allowed; }
-  .opt-btn .opt-icon { font-size: 1.6rem; }
+  .quiz-url { font-size: 0.75rem; color: #718096; margin-top: 6px; word-break: break-all; }
 
-  .opt-A { background: linear-gradient(135deg, #FF7675, #D63031); }
-  .opt-B { background: linear-gradient(135deg, #74B9FF, #0984E3); }
-  .opt-C { background: linear-gradient(135deg, #FDCB6E, #E17055); }
-  .opt-D { background: linear-gradient(135deg, #55EFC4, #00B894); }
-  .opt-T { background: linear-gradient(135deg, #6BCB77, #00B894); }
-  .opt-F { background: linear-gradient(135deg, #FF6B9D, #D63031); }
-
-  .opt-btn.selected { transform: scale(0.96); box-shadow: 0 2px 0 rgba(0,0,0,0.1); }
-  .opt-btn.correct  { animation: correctPop 0.5s; box-shadow: 0 0 0 4px var(--mint); }
-  .opt-btn.wrong    { opacity: 0.5; }
-  @keyframes correctPop { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
-
-  /* ── Result ── */
-  .result-wrap {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; text-align: center; gap: 12px;
-  }
-  .result-big { font-size: 4rem; animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1); }
-  @keyframes popIn { from{transform:scale(0)} to{transform:scale(1)} }
-  .result-title { font-family: 'Fredoka One', cursive; font-size: 2rem; }
-  .result-title.correct { color: var(--mint); }
-  .result-title.wrong   { color: var(--coral); }
-  .result-answer { color: #888; font-weight: 700; font-size: 0.9rem; }
-  .result-score  {
+  .current-q-display {
     background: linear-gradient(135deg, var(--pink), var(--orange));
-    border-radius: 20px; padding: 16px 32px; color: white;
-    font-family: 'Fredoka One', cursive; font-size: 1.5rem;
-    box-shadow: var(--shadow);
+    border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: center;
   }
-  .next-hint { color: #bbb; font-size: 0.82rem; font-weight: 700; }
+  .cq-label { font-size: 0.82rem; font-weight: 700; opacity: 0.85; margin-bottom: 6px; }
+  .cq-text  { font-family: 'Fredoka One', cursive; font-size: 1.3rem; line-height: 1.3; }
+  .cq-num   { font-size: 0.82rem; opacity: 0.8; margin-top: 4px; }
 
-  /* ── Final Score ── */
-  .final-wrap {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; text-align: center; gap: 14px;
+  /* Leaderboard */
+  .lb-row {
+    display: flex; align-items: center; gap: 10px;
+    background: #0f3460; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
   }
-  .final-emoji { font-size: 5rem; }
-  .final-title { font-family: 'Fredoka One', cursive; font-size: 2.2rem; color: var(--dark); }
-  .final-score-big {
-    font-family: 'Fredoka One', cursive; font-size: 4rem;
-    background: linear-gradient(135deg, var(--pink), var(--orange));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .final-sub { color: #888; font-weight: 700; }
+  .lb-rank { font-family: 'Fredoka One', cursive; font-size: 1.1rem; width: 30px; flex-shrink: 0; }
+  .lb-name { flex: 1; font-weight: 800; }
+  .lb-score { font-family: 'Fredoka One', cursive; color: var(--yellow); font-size: 1.1rem; }
 
-  /* Confetti */
-  .confetti {
-    position: fixed; width: 10px; height: 10px; pointer-events: none;
-    z-index: 999; animation: fall linear forwards; border-radius: 2px;
+  /* Players */
+  .player-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .player-chip {
+    background: #0f3460; border-radius: 20px; padding: 6px 14px;
+    font-size: 0.82rem; font-weight: 700; display: flex; align-items: center; gap: 6px;
   }
-  @keyframes fall {
-    0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(100vh) rotate(540deg); opacity: 0; }
+  .online-dot { width: 7px; height: 7px; background: var(--mint); border-radius: 50%; }
+
+  .status-bar {
+    background: #0f3460; border-radius: 12px; padding: 10px 16px;
+    font-size: 0.82rem; color: #a0aec0; font-weight: 700; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
   }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); flex-shrink: 0; }
+  .status-dot.live { background: var(--mint); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .empty-state { text-align: center; color: #4a5568; padding: 20px; font-weight: 700; }
+
+  .tf-row { display: flex; gap: 10px; margin-top: 8px; }
+
+  .section-divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 16px 0; }
 </style>
 </head>
 <body>
 
-<!-- Join Screen -->
-<div class="screen active" id="sJoin">
-  <div class="join-wrap">
-    <div class="join-emoji">💍</div>
-    <div class="join-title">婚禮問答遊戲</div>
-    <div class="join-sub">輸入你的名字，準備開始！</div>
-    <div class="join-card">
-      <input type="text" id="nameInput" placeholder="你的名字或暱稱" maxlength="20">
-      <button class="btn btn-pink" onclick="joinQuiz()">加入遊戲 🎉</button>
+<div class="header">
+  <div class="header-title">🎮 婚禮問答 主持人控制台</div>
+  <div class="header-badge" id="statusBadge">⏳ 初始化中</div>
+</div>
+
+<div class="main">
+
+  <!-- Row 1: Setup + Question Builder -->
+  <div class="grid-2" style="margin-bottom:20px">
+
+    <!-- Quiz Setup -->
+    <div class="card">
+      <div class="card-title">📝 題組設定</div>
+      <label>題組名稱</label>
+      <input type="text" id="quizTitle" placeholder="例：William & Mei 婚禮大挑戰 💍">
+      <label>每題作答時間（秒）</label>
+      <input type="number" id="quizTimer" value="20" min="5" max="120">
+      <button class="btn btn-pink btn-full" onclick="createQuiz()">🚀 建立題組 & 開放加入</button>
+
+      <div id="quizCreated" style="display:none">
+        <div class="quiz-id-display">
+          <div class="quiz-id-label">賓客加入網址</div>
+          <div class="quiz-url" id="playerURL"></div>
+          <div class="quiz-id-label" style="margin-top:10px">或掃描 QR Code</div>
+          <canvas id="qrCanvas" style="margin-top:8px;border-radius:10px"></canvas>
+        </div>
+        <div class="status-bar">
+          <div class="status-dot live"></div>
+          <span>題組已開放，等待賓客加入…</span>
+        </div>
+        <div class="card-title" style="margin-bottom:10px">👥 已加入賓客 (<span id="playerCount">0</span>)</div>
+        <div class="player-chips" id="playerChips">
+          <div class="empty-state">還沒有人加入</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Question Builder -->
+    <div class="card">
+      <div class="card-title">➕ 新增題目</div>
+      <label>題型</label>
+      <select id="qType" onchange="updateTypeUI()">
+        <option value="mc">選擇題（四選一）</option>
+        <option value="tf">是非題</option>
+      </select>
+      <label>題目內容</label>
+      <textarea id="qText" placeholder="輸入題目…"></textarea>
+
+      <div id="mcUI">
+        <label>選項（點 ⭐ 標記正確答案）</label>
+        <div class="choices-grid">
+          <div class="choice-row"><div class="choice-dot dot-A">A</div><input id="cA" placeholder="選項 A"><button class="star-btn" onclick="setCorrect('A')" id="sA">⭐</button></div>
+          <div class="choice-row"><div class="choice-dot dot-B">B</div><input id="cB" placeholder="選項 B"><button class="star-btn" onclick="setCorrect('B')" id="sB">⭐</button></div>
+          <div class="choice-row"><div class="choice-dot dot-C">C</div><input id="cC" placeholder="選項 C"><button class="star-btn" onclick="setCorrect('C')" id="sC">⭐</button></div>
+          <div class="choice-row"><div class="choice-dot dot-D">D</div><input id="cD" placeholder="選項 D"><button class="star-btn" onclick="setCorrect('D')" id="sD">⭐</button></div>
+        </div>
+      </div>
+      <div id="tfUI" style="display:none">
+        <label>正確答案</label>
+        <div class="tf-row">
+          <button class="btn btn-gray" id="tfT" onclick="setTF('true')" style="flex:1">✅ 是（True）</button>
+          <button class="btn btn-gray" id="tfF" onclick="setTF('false')" style="flex:1">❌ 否（False）</button>
+        </div>
+      </div>
+      <button class="btn btn-mint btn-full" style="margin-top:12px" onclick="addQuestion()">＋ 新增此題</button>
+
+      <hr class="section-divider">
+      <div class="card-title" style="margin-bottom:10px">📋 題目列表 (<span id="qCount">0</span>)</div>
+      <div id="qList"><div class="empty-state">尚未新增題目</div></div>
     </div>
   </div>
-</div>
 
-<!-- Waiting Screen -->
-<div class="screen" id="sWait">
-  <div class="waiting-wrap">
-    <div class="waiting-avatar" id="waitAvatar">😊</div>
-    <div class="waiting-name" id="waitName">玩家</div>
-    <div class="waiting-msg">已成功加入！等待主持人開始…</div>
-    <div class="waiting-dots"><span></span><span></span><span></span></div>
-  </div>
-</div>
+  <!-- Row 2: Game Control + Leaderboard -->
+  <div class="grid-2">
 
-<!-- Question Screen -->
-<div class="screen" id="sQuestion">
-  <div class="q-header">
-    <div class="q-progress" id="qProgress">1 / 5</div>
-    <div class="timer-wrap">
-      <svg class="timer-svg" width="56" height="56" viewBox="0 0 56 56">
-        <circle class="t-track" cx="28" cy="28" r="22"/>
-        <circle class="t-fill" id="timerCircle" cx="28" cy="28" r="22"
-          stroke-dasharray="138.2" stroke-dashoffset="0"/>
-      </svg>
-      <div class="timer-num" id="timerNum">20</div>
+    <!-- Game Control -->
+    <div class="card">
+      <div class="card-title">🎮 遊戲控制</div>
+      <div id="gameControlArea">
+        <div class="empty-state" style="padding:40px">請先建立題組並新增題目</div>
+      </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="card">
+      <div class="card-title">🏆 即時排行榜</div>
+      <div id="leaderboard"><div class="empty-state">遊戲開始後顯示排名</div></div>
+      <button class="btn btn-sky btn-full" style="margin-top:12px" onclick="refreshLeaderboard()">🔄 重新整理</button>
     </div>
   </div>
-  <div class="q-card">
-    <div class="q-emoji" id="qEmoji">🤔</div>
-    <div class="q-text"  id="qText">題目文字</div>
-  </div>
-  <div id="optionsWrap"></div>
-</div>
 
-<!-- Per-question result -->
-<div class="screen" id="sResult">
-  <div class="result-wrap">
-    <div class="result-big" id="resultEmoji">🎉</div>
-    <div class="result-title" id="resultTitle">答對了！</div>
-    <div class="result-answer" id="resultAnswer"></div>
-    <div class="result-score" id="resultScore">總分：0 分</div>
-    <div class="next-hint">等待主持人出下一題…</div>
-  </div>
-</div>
-
-<!-- Final Score -->
-<div class="screen" id="sFinal">
-  <div class="final-wrap">
-    <div class="final-emoji" id="finalEmoji">🏆</div>
-    <div class="final-title" id="finalTitle">遊戲結束！</div>
-    <div class="final-score-big" id="finalScore">0 分</div>
-    <div class="final-sub" id="finalSub">感謝參與！</div>
-  </div>
 </div>
 
 <script>
@@ -253,251 +249,216 @@ const SUPABASE_URL = 'https://yhxdmkuboujfbqrmfufw.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeGRta3Vib3VqZmJxcm1mdWZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTg4NDEsImV4cCI6MjA5NDU5NDg0MX0.VQnf-6U8x4-S2-JFyRpsLL2Hfw99Yfo-1GNNXeNfYa0';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const params  = new URLSearchParams(location.search);
-const quizId  = params.get('quiz');
-const emojis  = ['😊','🎉','🌟','🦊','🐼','🦄','🐸','🍀','🦋','🎈'];
-const qEmojis = ['🤔','💡','🎯','🔥','🧠','💎','🌈','🎭','🎪','🌟'];
+let quizId = null;
+let questions = [];
+let correctMC = '';
+let correctTF = '';
+let currentQIndex = -1;
+let playerSub = null;
 
-let playerId   = null;
-let playerName = '';
-let myScore    = 0;
-let currentQ   = null;
-let answered   = false;
-let timerID    = null;
-let questions  = [];
-let quizTimer  = 20;
-
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+// ── Type UI ──
+function updateTypeUI() {
+  const t = document.getElementById('qType').value;
+  document.getElementById('mcUI').style.display = t === 'mc' ? 'block' : 'none';
+  document.getElementById('tfUI').style.display = t === 'tf' ? 'block' : 'none';
+  correctMC = ''; correctTF = '';
+  resetStars(); resetTF();
+}
+function resetStars() {
+  ['A','B','C','D'].forEach(k => document.getElementById('s'+k).textContent = '⭐');
+}
+function setCorrect(k) {
+  correctMC = k; resetStars();
+  document.getElementById('s'+k).textContent = '✅';
+}
+function resetTF() {
+  document.getElementById('tfT').className = 'btn btn-gray';
+  document.getElementById('tfF').className = 'btn btn-gray';
+}
+function setTF(v) {
+  correctTF = v; resetTF();
+  document.getElementById(v === 'true' ? 'tfT' : 'tfF').className =
+    v === 'true' ? 'btn btn-mint' : 'btn btn-coral';
 }
 
-// ── Join ──
-async function joinQuiz() {
-  playerName = document.getElementById('nameInput').value.trim();
-  if (!playerName) { alert('請輸入名字！'); return; }
-  if (!quizId) { alert('無效的遊戲連結！'); return; }
+// ── Create Quiz ──
+async function createQuiz() {
+  const title = document.getElementById('quizTitle').value.trim() || '婚禮大挑戰';
+  const timer = parseInt(document.getElementById('quizTimer').value) || 20;
+  const { data, error } = await sb.from('quizzes').insert({
+    title, timer_seconds: timer, is_active: true, current_question: -1
+  }).select().single();
+  if (error) { alert('建立失敗：' + error.message); return; }
+  quizId = data.id;
 
-  const { data, error } = await sb.from('players')
-    .insert({ quiz_id: quizId, name: playerName, score: 0 })
-    .select().single();
-  if (error) { alert('加入失敗，請重試！'); return; }
-  playerId = data.id;
+  const playerURL = `${location.origin}/player.html?quiz=${quizId}`;
+  document.getElementById('playerURL').textContent = playerURL;
+  document.getElementById('quizCreated').style.display = 'block';
+  document.getElementById('statusBadge').textContent = '🟢 遊戲進行中';
 
-  const avatarIdx = Math.floor(Math.random() * emojis.length);
-  document.getElementById('waitAvatar').textContent = emojis[avatarIdx];
-  document.getElementById('waitName').textContent   = playerName;
-
-  // Load questions & quiz config
-  const { data: qz } = await sb.from('quizzes').select('*').eq('id', quizId).single();
-  quizTimer = qz?.timer_seconds || 20;
-
-  const { data: qs } = await sb.from('questions').select('*')
-    .eq('quiz_id', quizId).order('order_num');
-  questions = qs || [];
-
-  showScreen('sWait');
-  subscribeToQuiz();
+  generateQR(playerURL);
+  subscribeToPlayers();
+  renderGameControl();
 }
 
-// ── Subscribe to quiz state changes ──
-let lastQuizState = null;
-function subscribeToQuiz() {
-  sb.channel('quiz-state-' + quizId)
-    .on('postgres_changes', {
-      event: 'UPDATE', schema: 'public', table: 'quizzes',
-      filter: `id=eq.${quizId}`
-    }, payload => {
-      lastQuizState = payload.new;
-      handleQuizUpdate(payload.new);
-    })
-    .subscribe();
-
-  // Polling fallback every 2 seconds
-  setInterval(async () => {
-    const { data } = await sb.from('quizzes').select('*').eq('id', quizId).single();
-    if (!data) return;
-    const stateKey = data.current_question + '_' + data.show_result;
-    const lastKey  = lastQuizState ? lastQuizState.current_question + '_' + lastQuizState.show_result : null;
-    if (stateKey !== lastKey) {
-      lastQuizState = data;
-      handleQuizUpdate(data);
-    }
-  }, 2000);
+// ── QR Code (simple canvas) ──
+function generateQR(url) {
+  // Use QR API service
+  const img = document.createElement('img');
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
+  img.style.cssText = 'border-radius:10px;width:150px;height:150px';
+  const canvas = document.getElementById('qrCanvas');
+  canvas.replaceWith(img);
 }
 
-function handleQuizUpdate(quiz) {
-  const idx = quiz.current_question;
+// ── Add Question ──
+async function addQuestion() {
+  if (!quizId) { alert('請先建立題組！'); return; }
+  const type = document.getElementById('qType').value;
+  const text = document.getElementById('qText').value.trim();
+  if (!text) { alert('請輸入題目！'); return; }
 
-  // Game ended
-  if (idx === -2) { showFinal(); return; }
+  let qData = { quiz_id: quizId, order_num: questions.length, type, text };
 
-  // Show result for current question
-  if (quiz.show_result && currentQ) {
-    showQuestionResult(currentQ);
+  if (type === 'mc') {
+    const A = document.getElementById('cA').value.trim();
+    const B = document.getElementById('cB').value.trim();
+    const C = document.getElementById('cC').value.trim();
+    const D = document.getElementById('cD').value.trim();
+    if (!A||!B||!C||!D) { alert('請填完四個選項！'); return; }
+    if (!correctMC) { alert('請選擇正確答案！'); return; }
+    qData.choices = { A, B, C, D };
+    qData.answer  = correctMC;
+  } else {
+    if (!correctTF) { alert('請選擇是/否答案！'); return; }
+    qData.answer = correctTF;
+  }
+
+  const { data, error } = await sb.from('questions').insert(qData).select().single();
+  if (error) { alert('新增失敗：' + error.message); return; }
+  questions.push(data);
+  renderQList();
+  clearQForm();
+  renderGameControl();
+}
+
+function clearQForm() {
+  document.getElementById('qText').value = '';
+  ['cA','cB','cC','cD'].forEach(id => document.getElementById(id).value = '');
+  correctMC = ''; correctTF = '';
+  resetStars(); resetTF();
+}
+
+function renderQList() {
+  const el = document.getElementById('qList');
+  document.getElementById('qCount').textContent = questions.length;
+  if (!questions.length) { el.innerHTML = '<div class="empty-state">尚未新增題目</div>'; return; }
+  el.innerHTML = questions.map((q, i) => `
+    <div class="q-item">
+      <span class="q-item-num">${i+1}</span>
+      <span class="q-item-type">${q.type === 'mc' ? '選擇' : '是非'}</span>
+      <span class="q-item-text">${q.text}</span>
+      <button onclick="removeQuestion('${q.id}',${i})" style="background:none;border:none;color:var(--coral);cursor:pointer;font-size:1rem">✕</button>
+    </div>
+  `).join('');
+}
+
+async function removeQuestion(id, i) {
+  await sb.from('questions').delete().eq('id', id);
+  questions.splice(i, 1);
+  questions.forEach((q, idx) => q.order_num = idx);
+  renderQList();
+  renderGameControl();
+}
+
+// ── Game Control ──
+function renderGameControl() {
+  const el = document.getElementById('gameControlArea');
+  if (!quizId || !questions.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:40px">請先建立題組並新增題目</div>';
     return;
   }
-
-  // New question
-  if (idx >= 0 && idx < questions.length) {
-    currentQ = questions[idx];
-    answered = false;
-    document.getElementById('qProgress').textContent = `${idx+1} / ${questions.length}`;
-    document.getElementById('qEmoji').textContent  = qEmojis[idx % qEmojis.length];
-    document.getElementById('qText').textContent   = currentQ.text;
-    renderOptions(currentQ);
-    showScreen('sQuestion');
-    startTimer(quizTimer);
-  }
+  const q = currentQIndex >= 0 ? questions[currentQIndex] : null;
+  el.innerHTML = `
+    ${q ? `
+    <div class="current-q-display">
+      <div class="cq-label">目前題目</div>
+      <div class="cq-text">${q.text}</div>
+      <div class="cq-num">第 ${currentQIndex+1} 題 / 共 ${questions.length} 題</div>
+    </div>` : `
+    <div style="text-align:center;padding:20px;color:#718096;font-weight:700">
+      按下「開始第一題」開始遊戲！
+    </div>`}
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      ${currentQIndex < 0 ? `
+        <button class="btn btn-mint btn-lg" style="flex:1" onclick="goToQuestion(0)">▶ 開始第一題</button>
+      ` : `
+        <button class="btn btn-yellow" style="flex:1" onclick="showResults()" id="showResultBtn">👁 顯示答案</button>
+        ${currentQIndex < questions.length-1 ? `
+          <button class="btn btn-mint" style="flex:1" onclick="goToQuestion(${currentQIndex+1})">下一題 →</button>
+        ` : `
+          <button class="btn btn-pink" style="flex:1" onclick="endGame()">🏁 結束遊戲</button>
+        `}
+      `}
+    </div>
+  `;
 }
 
-// ── Options ──
-function renderOptions(q) {
-  const wrap = document.getElementById('optionsWrap');
-  if (q.type === 'mc') {
-    wrap.innerHTML = `<div class="options-mc">
-      ${['A','B','C','D'].map(k => `
-        <button class="opt-btn opt-${k}" id="opt${k}" onclick="submitAnswer('${k}')">
-          <span class="opt-icon">${{A:'🔴',B:'🔵',C:'🟡',D:'🟢'}[k]}</span>
-          <span>${escHtml(q.choices[k])}</span>
-        </button>
-      `).join('')}
-    </div>`;
-  } else {
-    wrap.innerHTML = `<div class="options-tf">
-      <button class="opt-btn opt-T" id="optTrue" onclick="submitAnswer('true')">
-        <span class="opt-icon">✅</span><span>是（True）</span>
-      </button>
-      <button class="opt-btn opt-F" id="optFalse" onclick="submitAnswer('false')">
-        <span class="opt-icon">❌</span><span>否（False）</span>
-      </button>
-    </div>`;
-  }
+async function goToQuestion(idx) {
+  currentQIndex = idx;
+  await sb.from('quizzes').update({ current_question: idx, show_result: false }).eq('id', quizId);
+  renderGameControl();
+  refreshLeaderboard();
 }
 
-// ── Answer ──
-async function submitAnswer(val) {
-  if (answered) return;
-  answered = true;
-  clearInterval(timerID);
-
-  const isCorrect = val === currentQ.answer;
-  const points    = isCorrect ? 1 : 0;
-  myScore += points;
-
-  // Disable all buttons
-  document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
-
-  // Highlight selected
-  const btnId = currentQ.type === 'mc' ? 'opt' + val : 'opt' + (val === 'true' ? 'True' : 'False');
-  const btn = document.getElementById(btnId);
-  if (btn) btn.classList.add('selected');
-
-  // Save to DB
-  await sb.from('answers').insert({
-    player_id: playerId, quiz_id: quizId,
-    question_order: questions.indexOf(currentQ),
-    answer: val, is_correct: isCorrect
-  });
-
-  // Update score
-  await sb.from('players').update({ score: myScore }).eq('id', playerId);
+async function showResults() {
+  await sb.from('quizzes').update({ show_result: true }).eq('id', quizId);
+  refreshLeaderboard();
 }
 
-// ── Show result after host reveals ──
-function showQuestionResult(q) {
-  clearInterval(timerID);
-  const lastAnswerEl = document.querySelector('.opt-btn.selected');
-  const myAnswer = lastAnswerEl ? null : null; // we track via DB
-
-  // Determine correct/wrong from score increment approach
-  // Show answer screen
-  const isCorrect = document.querySelector('.opt-btn.selected') !== null;
-
-  let ansText = '';
-  if (q.type === 'mc') {
-    ansText = `正確答案：${q.answer}. ${q.choices[q.answer]}`;
-  } else {
-    ansText = `正確答案：${q.answer === 'true' ? '✅ 是' : '❌ 否'}`;
-  }
-
-  document.getElementById('resultEmoji').textContent  = isCorrect ? '🎉' : '😅';
-  document.getElementById('resultTitle').textContent  = isCorrect ? '答對了！' : '答錯了…';
-  document.getElementById('resultTitle').className    = 'result-title ' + (isCorrect ? 'correct' : 'wrong');
-  document.getElementById('resultAnswer').textContent = ansText;
-  document.getElementById('resultScore').textContent  = `總分：${myScore} 分`;
-
-  if (isCorrect) confetti();
-  showScreen('sResult');
+async function endGame() {
+  await sb.from('quizzes').update({ current_question: -2, is_active: false }).eq('id', quizId);
+  document.getElementById('statusBadge').textContent = '🏁 遊戲結束';
+  renderGameControl();
+  refreshLeaderboard();
 }
 
-// ── Timer ──
-function startTimer(seconds) {
-  clearInterval(timerID);
-  let t = seconds;
-  const circ = 138.2;
-  updateTimer(t, seconds, circ);
-  timerID = setInterval(() => {
-    t--;
-    updateTimer(t, seconds, circ);
-    if (t <= 0) {
-      clearInterval(timerID);
-      if (!answered) submitAnswer(null);
-    }
-  }, 1000);
-}
-function updateTimer(t, max, circ) {
-  const offset = circ * (1 - t/max);
-  const el = document.getElementById('timerCircle');
-  el.style.strokeDashoffset = offset;
-  document.getElementById('timerNum').textContent = Math.max(0, t);
-  el.style.stroke = t/max > 0.5 ? 'var(--mint)' : t/max > 0.25 ? 'var(--yellow)' : 'var(--coral)';
+// ── Players ──
+function subscribeToPlayers() {
+  playerSub = sb.channel('players-' + quizId)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'players',
+        filter: `quiz_id=eq.${quizId}` }, () => refreshPlayers())
+    .subscribe();
+  refreshPlayers();
 }
 
-// ── Final ──
-async function showFinal() {
-  clearInterval(timerID);
-  const total = questions.length;
-  const pct = total ? Math.round(myScore/total*100) : 0;
-  let emoji = '🏆', msg = `答對 ${myScore} / ${total} 題（${pct}%）`;
-  if (pct === 100) { emoji = '🌟'; confetti(); confetti(); }
-  else if (pct >= 80) emoji = '🎉';
-  else if (pct >= 60) emoji = '👍';
-  else emoji = '💪';
-
-  document.getElementById('finalEmoji').textContent = emoji;
-  document.getElementById('finalScore').textContent = `${myScore} 分`;
-  document.getElementById('finalSub').textContent   = msg;
-  showScreen('sFinal');
+async function refreshPlayers() {
+  const { data } = await sb.from('players').select('*').eq('quiz_id', quizId).order('joined_at');
+  if (!data) return;
+  document.getElementById('playerCount').textContent = data.length;
+  const el = document.getElementById('playerChips');
+  if (!data.length) { el.innerHTML = '<div class="empty-state">還沒有人加入</div>'; return; }
+  el.innerHTML = data.map(p => `
+    <div class="player-chip"><div class="online-dot"></div>${p.name}</div>
+  `).join('');
 }
 
-// ── Confetti ──
-function confetti() {
-  const colors = ['#FF6B9D','#FFD93D','#6BCB77','#4D96FF','#FF9F43','#A29BFE'];
-  for (let i = 0; i < 25; i++) {
-    const el = document.createElement('div');
-    el.className = 'confetti';
-    el.style.cssText = `
-      left:${Math.random()*100}vw;
-      background:${colors[Math.floor(Math.random()*colors.length)]};
-      width:${6+Math.random()*8}px; height:${6+Math.random()*8}px;
-      border-radius:${Math.random()>.5?'50%':'2px'};
-      animation-duration:${1.5+Math.random()*2}s;
-      animation-delay:${Math.random()*0.4}s;
-    `;
-    document.body.appendChild(el);
-    el.addEventListener('animationend', () => el.remove());
-  }
+// ── Leaderboard ──
+async function refreshLeaderboard() {
+  const { data } = await sb.from('players').select('*').eq('quiz_id', quizId).order('score', { ascending: false }).limit(10);
+  const el = document.getElementById('leaderboard');
+  if (!data || !data.length) { el.innerHTML = '<div class="empty-state">遊戲開始後顯示排名</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = data.map((p, i) => `
+    <div class="lb-row">
+      <div class="lb-rank">${medals[i] || (i+1)}</div>
+      <div class="lb-name">${p.name}</div>
+      <div class="lb-score">${p.score} 分</div>
+    </div>
+  `).join('');
 }
 
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ── Init ──
-if (!quizId) {
-  document.querySelector('.join-sub').textContent = '⚠️ 無效的遊戲連結，請向主持人索取正確連結';
-}
+document.getElementById('statusBadge').textContent = '✅ 已連線';
 </script>
 </body>
 </html>
