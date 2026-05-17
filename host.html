@@ -291,8 +291,7 @@ async function createQuiz() {
   if (error) { alert('建立失敗：' + error.message); return; }
   quizId = data.id;
 
-  const base = location.protocol === 'file:' ? 'https://x06jp6long-q.github.io/wedding-quiz' : `${location.origin}${location.pathname.replace('host.html','')}`;
-  const playerURL = `${base}/player.html?quiz=${quizId}`;
+  const playerURL = `${location.origin}/player.html?quiz=${quizId}`;
   document.getElementById('playerURL').textContent = playerURL;
   document.getElementById('quizCreated').style.display = 'block';
   document.getElementById('statusBadge').textContent = '🟢 遊戲進行中';
@@ -391,9 +390,7 @@ function renderGameControl() {
       按下「開始第一題」開始遊戲！
     </div>`}
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      ${${currentQIndex < 0 ? `
-  <button class="btn btn-mint btn-lg" style="flex:1" onclick="goToQuestion(0)">▶ 開始第一題</button>
-` : `
+      ${currentQIndex < 0 ? `
         <button class="btn btn-mint btn-lg" style="flex:1" onclick="goToQuestion(0)">▶ 開始第一題</button>
       ` : `
         <button class="btn btn-yellow" style="flex:1" onclick="showResults()" id="showResultBtn">👁 顯示答案</button>
