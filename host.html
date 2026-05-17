@@ -291,7 +291,8 @@ async function createQuiz() {
   if (error) { alert('建立失敗：' + error.message); return; }
   quizId = data.id;
 
-  const playerURL = `${location.origin}/player.html?quiz=${quizId}`;
+  const base = location.protocol === 'file:' ? 'https://x06jp6long-q.github.io/wedding-quiz' : `${location.origin}${location.pathname.replace('host.html','')}`;
+  const playerURL = `${base}/player.html?quiz=${quizId}`;
   document.getElementById('playerURL').textContent = playerURL;
   document.getElementById('quizCreated').style.display = 'block';
   document.getElementById('statusBadge').textContent = '🟢 遊戲進行中';
