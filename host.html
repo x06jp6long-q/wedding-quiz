@@ -391,7 +391,9 @@ function renderGameControl() {
       按下「開始第一題」開始遊戲！
     </div>`}
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      ${currentQIndex < 0 ? `
+      ${${currentQIndex < 0 ? `
+  <button class="btn btn-mint btn-lg" style="flex:1" onclick="goToQuestion(0)">▶ 開始第一題</button>
+` : `
         <button class="btn btn-mint btn-lg" style="flex:1" onclick="goToQuestion(0)">▶ 開始第一題</button>
       ` : `
         <button class="btn btn-yellow" style="flex:1" onclick="showResults()" id="showResultBtn">👁 顯示答案</button>
