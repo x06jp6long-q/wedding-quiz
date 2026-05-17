@@ -301,13 +301,29 @@ async function joinQuiz() {
 }
 
 // ── Subscribe to quiz state changes ──
+let lastQuizState = null;
 function subscribeToQuiz() {
   sb.channel('quiz-state-' + quizId)
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public', table: 'quizzes',
       filter: `id=eq.${quizId}`
-    }, payload => handleQuizUpdate(payload.new))
+    }, payload => {
+      lastQuizState = payload.new;
+      handleQuizUpdate(payload.new);
+    })
     .subscribe();
+
+  // Polling fallback every 2 seconds
+  setInterval(async () => {
+    const { data } = await sb.from('quizzes').select('*').eq('id', quizId).single();
+    if (!data) return;
+    const stateKey = data.current_question + '_' + data.show_result;
+    const lastKey  = lastQuizState ? lastQuizState.current_question + '_' + lastQuizState.show_result : null;
+    if (stateKey !== lastKey) {
+      lastQuizState = data;
+      handleQuizUpdate(data);
+    }
+  }, 2000);
 }
 
 function handleQuizUpdate(quiz) {
