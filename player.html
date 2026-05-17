@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>🎊 婚禮問答 - 賓客作答</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pink: #FF6B9D; --yellow: #FFD93D; --mint: #6BCB77;
+    --sky: #4D96FF; --orange: #FF9F43; --coral: #FF7675;
+    --dark: #2D3436; --shadow: 0 6px 0px rgba(0,0,0,0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(160deg, #FFF0F5 0%, #F0F8FF 50%, #F0FFF4 100%);
+    min-height: 100vh; overflow-x: hidden;
+  }
+
+  .screen { display: none; min-height: 100vh; padding: 20px 16px; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ── Join Screen ── */
+  .join-wrap {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+  }
+  .join-emoji { font-size: 4rem; margin-bottom: 12px;
+    animation: bounce 2s ease-in-out infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  .join-title {
+    font-family: 'Fredoka One', cursive; font-size: 2rem;
+    color: var(--pink); margin-bottom: 6px;
+  }
+  .join-sub { color: #999; font-weight: 700; font-size: 0.95rem; margin-bottom: 28px; }
+
+  .join-card {
+    background: white; border-radius: 24px; padding: 28px 24px;
+    box-shadow: var(--shadow), 0 0 0 3px rgba(255,107,157,0.08);
+    width: 100%; max-width: 360px;
+  }
+  input[type="text"] {
+    width: 100%; padding: 14px 18px; border: 2.5px solid #F0F0F0;
+    border-radius: 16px; font-family: 'Nunito', sans-serif;
+    font-size: 1rem; font-weight: 700; outline: none;
+    transition: border-color 0.2s; margin-bottom: 14px;
+    background: #FAFAFA; color: var(--dark);
+  }
+  input:focus { border-color: var(--pink); background: white; }
+
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px; border: none; border-radius: 50px;
+    font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800;
+    cursor: pointer; transition: all 0.15s; box-shadow: var(--shadow);
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.1); }
+  .btn-pink   { background: var(--pink); color: white; }
+  .btn-mint   { background: var(--mint); color: white; }
+  .btn-sky    { background: var(--sky);  color: white; }
+  .btn-yellow { background: var(--yellow); color: var(--dark); }
+
+  /* ── Waiting Screen ── */
+  .waiting-wrap {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; gap: 16px;
+  }
+  .waiting-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink), var(--orange));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem; box-shadow: var(--shadow);
+  }
+  .waiting-name { font-family: 'Fredoka One', cursive; font-size: 1.5rem; color: var(--dark); }
+  .waiting-msg { color: #999; font-weight: 700; font-size: 0.9rem; }
+  .waiting-dots span {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--pink); margin: 0 3px;
+    animation: dotPulse 1.4s ease-in-out infinite;
+  }
+  .waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotPulse { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+  /* ── Question Screen ── */
+  .q-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .q-progress { font-weight: 800; color: #888; font-size: 0.88rem; }
+  .timer-wrap {
+    width: 56px; height: 56px; position: relative; flex-shrink: 0;
+  }
+  .timer-svg { transform: rotate(-90deg); }
+  .t-track { fill: none; stroke: #F0F0F0; stroke-width: 5; }
+  .t-fill  { fill: none; stroke: var(--pink); stroke-width: 5; stroke-linecap: round;
+             transition: stroke-dashoffset 1s linear, stroke 0.5s; }
+  .timer-num {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem; color: var(--dark);
+  }
+
+  .q-card {
+    background: white; border-radius: 20px; padding: 22px;
+    text-align: center; margin-bottom: 18px;
+    box-shadow: var(--shadow), 0 0 0 3px rgba(255,107,157,0.08);
+  }
+  .q-emoji { font-size: 2.2rem; margin-bottom: 8px; }
+  .q-text  { font-family: 'Fredoka One', cursive; font-size: 1.25rem; color: var(--dark); line-height: 1.4; }
+
+  .options-mc { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .options-tf { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .opt-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 18px 12px; border: none; border-radius: 18px;
+    cursor: pointer; font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 0.88rem; text-align: center; color: white;
+    box-shadow: var(--shadow); transition: all 0.12s;
+    min-height: 80px; line-height: 1.3;
+  }
+  .opt-btn:active { transform: scale(0.95); }
+  .opt-btn:disabled { cursor: not-allowed; }
+  .opt-btn .opt-icon { font-size: 1.6rem; }
+
+  .opt-A { background: linear-gradient(135deg, #FF7675, #D63031); }
+  .opt-B { background: linear-gradient(135deg, #74B9FF, #0984E3); }
+  .opt-C { background: linear-gradient(135deg, #FDCB6E, #E17055); }
+  .opt-D { background: linear-gradient(135deg, #55EFC4, #00B894); }
+  .opt-T { background: linear-gradient(135deg, #6BCB77, #00B894); }
+  .opt-F { background: linear-gradient(135deg, #FF6B9D, #D63031); }
+
+  .opt-btn.selected { transform: scale(0.96); box-shadow: 0 2px 0 rgba(0,0,0,0.1); }
+  .opt-btn.correct  { animation: correctPop 0.5s; box-shadow: 0 0 0 4px var(--mint); }
+  .opt-btn.wrong    { opacity: 0.5; }
+  @keyframes correctPop { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
+
+  /* ── Result ── */
+  .result-wrap {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; gap: 12px;
+  }
+  .result-big { font-size: 4rem; animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes popIn { from{transform:scale(0)} to{transform:scale(1)} }
+  .result-title { font-family: 'Fredoka One', cursive; font-size: 2rem; }
+  .result-title.correct { color: var(--mint); }
+  .result-title.wrong   { color: var(--coral); }
+  .result-answer { color: #888; font-weight: 700; font-size: 0.9rem; }
+  .result-score  {
+    background: linear-gradient(135deg, var(--pink), var(--orange));
+    border-radius: 20px; padding: 16px 32px; color: white;
+    font-family: 'Fredoka One', cursive; font-size: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .next-hint { color: #bbb; font-size: 0.82rem; font-weight: 700; }
+
+  /* ── Final Score ── */
+  .final-wrap {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; gap: 14px;
+  }
+  .final-emoji { font-size: 5rem; }
+  .final-title { font-family: 'Fredoka One', cursive; font-size: 2.2rem; color: var(--dark); }
+  .final-score-big {
+    font-family: 'Fredoka One', cursive; font-size: 4rem;
+    background: linear-gradient(135deg, var(--pink), var(--orange));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .final-sub { color: #888; font-weight: 700; }
+
+  /* Confetti */
+  .confetti {
+    position: fixed; width: 10px; height: 10px; pointer-events: none;
+    z-index: 999; animation: fall linear forwards; border-radius: 2px;
+  }
+  @keyframes fall {
+    0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(540deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Join Screen -->
+<div class="screen active" id="sJoin">
+  <div class="join-wrap">
+    <div class="join-emoji">💍</div>
+    <div class="join-title">婚禮問答遊戲</div>
+    <div class="join-sub">輸入你的名字，準備開始！</div>
+    <div class="join-card">
+      <input type="text" id="nameInput" placeholder="你的名字或暱稱" maxlength="20">
+      <button class="btn btn-pink" onclick="joinQuiz()">加入遊戲 🎉</button>
+    </div>
+  </div>
+</div>
+
+<!-- Waiting Screen -->
+<div class="screen" id="sWait">
+  <div class="waiting-wrap">
+    <div class="waiting-avatar" id="waitAvatar">😊</div>
+    <div class="waiting-name" id="waitName">玩家</div>
+    <div class="waiting-msg">已成功加入！等待主持人開始…</div>
+    <div class="waiting-dots"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- Question Screen -->
+<div class="screen" id="sQuestion">
+  <div class="q-header">
+    <div class="q-progress" id="qProgress">1 / 5</div>
+    <div class="timer-wrap">
+      <svg class="timer-svg" width="56" height="56" viewBox="0 0 56 56">
+        <circle class="t-track" cx="28" cy="28" r="22"/>
+        <circle class="t-fill" id="timerCircle" cx="28" cy="28" r="22"
+          stroke-dasharray="138.2" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-num" id="timerNum">20</div>
+    </div>
+  </div>
+  <div class="q-card">
+    <div class="q-emoji" id="qEmoji">🤔</div>
+    <div class="q-text"  id="qText">題目文字</div>
+  </div>
+  <div id="optionsWrap"></div>
+</div>
+
+<!-- Per-question result -->
+<div class="screen" id="sResult">
+  <div class="result-wrap">
+    <div class="result-big" id="resultEmoji">🎉</div>
+    <div class="result-title" id="resultTitle">答對了！</div>
+    <div class="result-answer" id="resultAnswer"></div>
+    <div class="result-score" id="resultScore">總分：0 分</div>
+    <div class="next-hint">等待主持人出下一題…</div>
+  </div>
+</div>
+
+<!-- Final Score -->
+<div class="screen" id="sFinal">
+  <div class="final-wrap">
+    <div class="final-emoji" id="finalEmoji">🏆</div>
+    <div class="final-title" id="finalTitle">遊戲結束！</div>
+    <div class="final-score-big" id="finalScore">0 分</div>
+    <div class="final-sub" id="finalSub">感謝參與！</div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://yhxdmkuboujfbqrmfufw.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeGRta3Vib3VqZmJxcm1mdWZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTg4NDEsImV4cCI6MjA5NDU5NDg0MX0.VQnf-6U8x4-S2-JFyRpsLL2Hfw99Yfo-1GNNXeNfYa0';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const params  = new URLSearchParams(location.search);
+const quizId  = params.get('quiz');
+const emojis  = ['😊','🎉','🌟','🦊','🐼','🦄','🐸','🍀','🦋','🎈'];
+const qEmojis = ['🤔','💡','🎯','🔥','🧠','💎','🌈','🎭','🎪','🌟'];
+
+let playerId   = null;
+let playerName = '';
+let myScore    = 0;
+let currentQ   = null;
+let answered   = false;
+let timerID    = null;
+let questions  = [];
+let quizTimer  = 20;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Join ──
+async function joinQuiz() {
+  playerName = document.getElementById('nameInput').value.trim();
+  if (!playerName) { alert('請輸入名字！'); return; }
+  if (!quizId) { alert('無效的遊戲連結！'); return; }
+
+  const { data, error } = await sb.from('players')
+    .insert({ quiz_id: quizId, name: playerName, score: 0 })
+    .select().single();
+  if (error) { alert('加入失敗，請重試！'); return; }
+  playerId = data.id;
+
+  const avatarIdx = Math.floor(Math.random() * emojis.length);
+  document.getElementById('waitAvatar').textContent = emojis[avatarIdx];
+  document.getElementById('waitName').textContent   = playerName;
+
+  // Load questions & quiz config
+  const { data: qz } = await sb.from('quizzes').select('*').eq('id', quizId).single();
+  quizTimer = qz?.timer_seconds || 20;
+
+  const { data: qs } = await sb.from('questions').select('*')
+    .eq('quiz_id', quizId).order('order_num');
+  questions = qs || [];
+
+  showScreen('sWait');
+  subscribeToQuiz();
+}
+
+// ── Subscribe to quiz state changes ──
+function subscribeToQuiz() {
+  sb.channel('quiz-state-' + quizId)
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'quizzes',
+      filter: `id=eq.${quizId}`
+    }, payload => handleQuizUpdate(payload.new))
+    .subscribe();
+}
+
+function handleQuizUpdate(quiz) {
+  const idx = quiz.current_question;
+
+  // Game ended
+  if (idx === -2) { showFinal(); return; }
+
+  // Show result for current question
+  if (quiz.show_result && currentQ) {
+    showQuestionResult(currentQ);
+    return;
+  }
+
+  // New question
+  if (idx >= 0 && idx < questions.length) {
+    currentQ = questions[idx];
+    answered = false;
+    document.getElementById('qProgress').textContent = `${idx+1} / ${questions.length}`;
+    document.getElementById('qEmoji').textContent  = qEmojis[idx % qEmojis.length];
+    document.getElementById('qText').textContent   = currentQ.text;
+    renderOptions(currentQ);
+    showScreen('sQuestion');
+    startTimer(quizTimer);
+  }
+}
+
+// ── Options ──
+function renderOptions(q) {
+  const wrap = document.getElementById('optionsWrap');
+  if (q.type === 'mc') {
+    wrap.innerHTML = `<div class="options-mc">
+      ${['A','B','C','D'].map(k => `
+        <button class="opt-btn opt-${k}" id="opt${k}" onclick="submitAnswer('${k}')">
+          <span class="opt-icon">${{A:'🔴',B:'🔵',C:'🟡',D:'🟢'}[k]}</span>
+          <span>${escHtml(q.choices[k])}</span>
+        </button>
+      `).join('')}
+    </div>`;
+  } else {
+    wrap.innerHTML = `<div class="options-tf">
+      <button class="opt-btn opt-T" id="optTrue" onclick="submitAnswer('true')">
+        <span class="opt-icon">✅</span><span>是（True）</span>
+      </button>
+      <button class="opt-btn opt-F" id="optFalse" onclick="submitAnswer('false')">
+        <span class="opt-icon">❌</span><span>否（False）</span>
+      </button>
+    </div>`;
+  }
+}
+
+// ── Answer ──
+async function submitAnswer(val) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timerID);
+
+  const isCorrect = val === currentQ.answer;
+  const points    = isCorrect ? 1 : 0;
+  myScore += points;
+
+  // Disable all buttons
+  document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+
+  // Highlight selected
+  const btnId = currentQ.type === 'mc' ? 'opt' + val : 'opt' + (val === 'true' ? 'True' : 'False');
+  const btn = document.getElementById(btnId);
+  if (btn) btn.classList.add('selected');
+
+  // Save to DB
+  await sb.from('answers').insert({
+    player_id: playerId, quiz_id: quizId,
+    question_order: questions.indexOf(currentQ),
+    answer: val, is_correct: isCorrect
+  });
+
+  // Update score
+  await sb.from('players').update({ score: myScore }).eq('id', playerId);
+}
+
+// ── Show result after host reveals ──
+function showQuestionResult(q) {
+  clearInterval(timerID);
+  const lastAnswerEl = document.querySelector('.opt-btn.selected');
+  const myAnswer = lastAnswerEl ? null : null; // we track via DB
+
+  // Determine correct/wrong from score increment approach
+  // Show answer screen
+  const isCorrect = document.querySelector('.opt-btn.selected') !== null;
+
+  let ansText = '';
+  if (q.type === 'mc') {
+    ansText = `正確答案：${q.answer}. ${q.choices[q.answer]}`;
+  } else {
+    ansText = `正確答案：${q.answer === 'true' ? '✅ 是' : '❌ 否'}`;
+  }
+
+  document.getElementById('resultEmoji').textContent  = isCorrect ? '🎉' : '😅';
+  document.getElementById('resultTitle').textContent  = isCorrect ? '答對了！' : '答錯了…';
+  document.getElementById('resultTitle').className    = 'result-title ' + (isCorrect ? 'correct' : 'wrong');
+  document.getElementById('resultAnswer').textContent = ansText;
+  document.getElementById('resultScore').textContent  = `總分：${myScore} 分`;
+
+  if (isCorrect) confetti();
+  showScreen('sResult');
+}
+
+// ── Timer ──
+function startTimer(seconds) {
+  clearInterval(timerID);
+  let t = seconds;
+  const circ = 138.2;
+  updateTimer(t, seconds, circ);
+  timerID = setInterval(() => {
+    t--;
+    updateTimer(t, seconds, circ);
+    if (t <= 0) {
+      clearInterval(timerID);
+      if (!answered) submitAnswer(null);
+    }
+  }, 1000);
+}
+function updateTimer(t, max, circ) {
+  const offset = circ * (1 - t/max);
+  const el = document.getElementById('timerCircle');
+  el.style.strokeDashoffset = offset;
+  document.getElementById('timerNum').textContent = Math.max(0, t);
+  el.style.stroke = t/max > 0.5 ? 'var(--mint)' : t/max > 0.25 ? 'var(--yellow)' : 'var(--coral)';
+}
+
+// ── Final ──
+async function showFinal() {
+  clearInterval(timerID);
+  const total = questions.length;
+  const pct = total ? Math.round(myScore/total*100) : 0;
+  let emoji = '🏆', msg = `答對 ${myScore} / ${total} 題（${pct}%）`;
+  if (pct === 100) { emoji = '🌟'; confetti(); confetti(); }
+  else if (pct >= 80) emoji = '🎉';
+  else if (pct >= 60) emoji = '👍';
+  else emoji = '💪';
+
+  document.getElementById('finalEmoji').textContent = emoji;
+  document.getElementById('finalScore').textContent = `${myScore} 分`;
+  document.getElementById('finalSub').textContent   = msg;
+  showScreen('sFinal');
+}
+
+// ── Confetti ──
+function confetti() {
+  const colors = ['#FF6B9D','#FFD93D','#6BCB77','#4D96FF','#FF9F43','#A29BFE'];
+  for (let i = 0; i < 25; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.cssText = `
+      left:${Math.random()*100}vw;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      width:${6+Math.random()*8}px; height:${6+Math.random()*8}px;
+      border-radius:${Math.random()>.5?'50%':'2px'};
+      animation-duration:${1.5+Math.random()*2}s;
+      animation-delay:${Math.random()*0.4}s;
+    `;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ──
+if (!quizId) {
+  document.querySelector('.join-sub').textContent = '⚠️ 無效的遊戲連結，請向主持人索取正確連結';
+}
+</script>
+</body>
+</html>
