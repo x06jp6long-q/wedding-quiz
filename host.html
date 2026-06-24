@@ -460,6 +460,8 @@ async function resetScores() {
   if (!confirm('確定要重置所有賓客的分數嗎？（題目進度不變）')) return;
   await sb.from('players').update({ score: 0 }).eq('quiz_id', quizId);
   await sb.from('answers').delete().eq('quiz_id', quizId);
+  // Touch quizzes to notify scoreboard via realtime
+  await sb.from('quizzes').update({ show_result: false }).eq('id', quizId);
   refreshLeaderboard();
   alert('✅ 所有分數已重置！');
 }

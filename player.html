@@ -133,7 +133,15 @@
   .opt-T { background: linear-gradient(135deg, #6BCB77, #00B894); }
   .opt-F { background: linear-gradient(135deg, #FF6B9D, #D63031); }
 
-  .opt-btn.selected { transform: scale(0.96); box-shadow: 0 2px 0 rgba(0,0,0,0.1); }
+  .opt-btn.selected {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.5);
+    animation: glowPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes glowPulse {
+    0%,100% { box-shadow: 0 0 0 4px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.7); }
+  }
   .opt-btn.correct  { animation: correctPop 0.5s; box-shadow: 0 0 0 4px var(--mint); }
   .opt-btn.wrong    { opacity: 0.5; }
   @keyframes correctPop { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
