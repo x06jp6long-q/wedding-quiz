@@ -294,7 +294,7 @@ async function createQuiz() {
   if (error) { alert('建立失敗：' + error.message); return; }
   quizId = data.id;
 
-  const base = location.origin !== 'null' ? location.origin : location.href.replace(/[^/]*$/, '');
+  const base = location.href.replace(/[^/]*$/, '');
   const playerURL = `${base}player.html?quiz=${quizId}`;
   document.getElementById('playerURL').textContent = playerURL;
   document.getElementById('quizCreated').style.display = 'block';
