@@ -287,7 +287,11 @@ function setTF(v) {
 // ── Create Quiz ──
 async function createQuiz() {
   const title = document.getElementById('quizTitle').value.trim() || '婚禮大挑戰';
-  const timer = parseInt(document.getElementById('quizTimer').value) || 20;
+  const rawTimer = parseInt(document.getElementById('quizTimer').value);
+  if (isNaN(rawTimer) || rawTimer < 5 || rawTimer > 120) {
+    alert('作答時間請輸入 5～120 的數字！'); return;
+  }
+  const timer = rawTimer;
   const { data, error } = await sb.from('quizzes').insert({
     title, timer_seconds: timer, is_active: true, current_question: -1
   }).select().single();
@@ -389,6 +393,7 @@ function renderGameControl() {
       <div class="cq-label">目前題目</div>
       <div class="cq-text">${q.text}</div>
       <div class="cq-num">第 ${currentQIndex+1} 題 / 共 ${questions.length} 題</div>
+      <div id="hostTimerDisplay" style="margin-top:8px;font-family:'Fredoka One',cursive;font-size:1.1rem;opacity:0.9"></div>
     </div>` : `
     <div style="text-align:center;padding:20px;color:#718096;font-weight:700">
       按下「開始第一題」開始遊戲！
@@ -417,14 +422,37 @@ function renderGameControl() {
 
 async function goToQuestion(idx) {
   currentQIndex = idx;
-  await sb.from('quizzes').update({ current_question: idx, show_result: false }).eq('id', quizId);
+  await sb.from('quizzes').update({
+    current_question: idx, show_result: false,
+  }).eq('id', quizId);
   renderGameControl();
   refreshLeaderboard();
+  startHostTimer();
+}
+
+let hostTimerID = null;
+function startHostTimer() {
+  clearInterval(hostTimerID);
+  const seconds = parseInt(document.getElementById('quizTimer').value) || 20;
+  let t = seconds;
+  renderHostTimer(t);
+  hostTimerID = setInterval(() => {
+    t--;
+    renderHostTimer(t);
+    if (t <= 0) clearInterval(hostTimerID);
+  }, 1000);
+}
+function renderHostTimer(t) {
+  const el = document.getElementById('hostTimerDisplay');
+  if (el) el.textContent = t > 0 ? `⏱ 剩餘 ${t} 秒` : '⏱ 時間到！';
 }
 
 async function showResults() {
+  clearInterval(hostTimerID);
   await sb.from('quizzes').update({ show_result: true }).eq('id', quizId);
   refreshLeaderboard();
+  const el = document.getElementById('hostTimerDisplay');
+  if (el) el.textContent = '';
 }
 
 async function resetScores() {

@@ -242,6 +242,12 @@
       <div class="status-dot waiting" id="statusDot"></div>
       <span id="statusText">等待遊戲開始…</span>
     </div>
+    <div class="status-pill" id="timerPill" style="display:none">
+      <span id="timerDisplay">⏱ --</span>
+    </div>
+    <div class="status-pill" id="questionPill" style="display:none">
+      <span id="questionDisplay"></span>
+    </div>
   </div>
 
   <div class="stats-bar" id="statsBar" style="display:none">
@@ -281,6 +287,9 @@ const medals = ['🥇','🥈','🥉'];
 let prevScores = {};
 let questions = [];
 let currentState = 'waiting';
+let quizTimer = 20;
+let sbTimerID = null;
+let lastQuestionIdx = -1;
 
 async function init() {
   if (!quizId) {
@@ -291,6 +300,7 @@ async function init() {
   const { data: quiz } = await sb.from('quizzes').select('*').eq('id', quizId).single();
   if (quiz) {
     document.getElementById('quizTitle').textContent = '🏆 ' + quiz.title;
+    quizTimer = quiz.timer_seconds || 20;
   }
 
   const { data: qs } = await sb.from('questions').select('*').eq('quiz_id', quizId).order('order_num');
@@ -322,22 +332,38 @@ function updateStatus(quiz) {
 
   dot.className = 'status-dot';
 
+  const timerPill = document.getElementById('timerPill');
+  const timerDisplay = document.getElementById('timerDisplay');
+  const questionPill = document.getElementById('questionPill');
+  const questionDisplay = document.getElementById('questionDisplay');
+
   if (quiz.current_question === -2) {
     currentState = 'ended';
     dot.classList.add('ended');
     text.textContent = '🏁 遊戲結束';
+    stopTimer();
+    questionPill.style.display = 'none';
   } else if (quiz.current_question < 0) {
     currentState = 'waiting';
     dot.classList.add('waiting');
     text.textContent = '等待遊戲開始…';
+    stopTimer();
+    questionPill.style.display = 'none';
   } else if (quiz.show_result) {
     currentState = 'reveal';
     dot.classList.add('reveal');
     text.textContent = `第 ${quiz.current_question + 1} 題 — 公布答案`;
+    stopTimer();
+    showQuestionText(quiz.current_question);
   } else {
     currentState = 'playing';
     dot.classList.add('playing');
     text.textContent = `第 ${quiz.current_question + 1} 題 — 作答中…`;
+    showQuestionText(quiz.current_question);
+    if (quiz.current_question !== lastQuestionIdx) {
+      lastQuestionIdx = quiz.current_question;
+      startTimer(quizTimer);
+    }
   }
 
   // Refetch questions in case host added more
@@ -349,23 +375,62 @@ function updateStatus(quiz) {
   updateStatsBar();
 }
 
-function updateStatsBar() {
-  // will be filled after board refresh
+function updateStatsBar() {}
+
+function showQuestionText(idx) {
+  const pill = document.getElementById('questionPill');
+  const display = document.getElementById('questionDisplay');
+  if (idx >= 0 && idx < questions.length) {
+    display.textContent = questions[idx].text;
+    pill.style.display = '';
+  } else {
+    pill.style.display = 'none';
+  }
+}
+
+function startTimer(seconds) {
+  clearInterval(sbTimerID);
+  let t = seconds;
+  const pill = document.getElementById('timerPill');
+  const display = document.getElementById('timerDisplay');
+  pill.style.display = '';
+  display.textContent = `⏱ ${t} 秒`;
+  sbTimerID = setInterval(() => {
+    t--;
+    if (t <= 0) {
+      display.textContent = '⏱ 時間到！';
+      clearInterval(sbTimerID);
+    } else {
+      display.textContent = `⏱ ${t} 秒`;
+    }
+    display.style.color = t > 10 ? 'white' : t > 5 ? 'var(--yellow)' : 'var(--coral)';
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(sbTimerID);
+  document.getElementById('timerPill').style.display = 'none';
 }
 
 async function refreshBoard() {
   const { data: players } = await sb.from('players').select('*')
     .eq('quiz_id', quizId).order('score', { ascending: false });
 
-  if (!players || !players.length) return;
+  if (!players || !players.length) {
+    document.getElementById('lbList').innerHTML = '<div class="empty-state"><div class="empty-emoji">🎊</div><div class="empty-text">等待賓客加入…</div></div>';
+    document.getElementById('statsBar').style.display = 'none';
+    prevScores = {};
+    return;
+  }
 
   document.getElementById('statsBar').style.display = 'flex';
   document.getElementById('statPlayers').textContent = players.length;
   const totalQ = questions.length;
+  const curQ = lastQuestionIdx >= 0 ? lastQuestionIdx + 1 : 0;
   document.getElementById('statProgress').textContent =
     currentState === 'waiting' ? `0/${totalQ}` :
     currentState === 'ended' ? `${totalQ}/${totalQ}` :
-    `?/${totalQ}`;
+    `${curQ}/${totalQ}`;
 
   const maxScore = Math.max(1, ...players.map(p => p.score));
   const el = document.getElementById('lbList');
