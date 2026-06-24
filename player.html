@@ -263,6 +263,7 @@ let playerName = '';
 let myScore    = 0;
 let currentQ   = null;
 let answered   = false;
+let lastAnswer = null;
 let timerID    = null;
 let questions  = [];
 let quizTimer  = 20;
@@ -301,32 +302,16 @@ async function joinQuiz() {
 }
 
 // ── Subscribe to quiz state changes ──
-let lastQuizState = null;
 function subscribeToQuiz() {
   sb.channel('quiz-state-' + quizId)
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public', table: 'quizzes',
       filter: `id=eq.${quizId}`
-    }, payload => {
-      lastQuizState = payload.new;
-      handleQuizUpdate(payload.new);
-    })
+    }, payload => handleQuizUpdate(payload.new))
     .subscribe();
-
-  // Polling fallback every 2 seconds
-  setInterval(async () => {
-    const { data } = await sb.from('quizzes').select('*').eq('id', quizId).single();
-    if (!data) return;
-    const stateKey = data.current_question + '_' + data.show_result;
-    const lastKey  = lastQuizState ? lastQuizState.current_question + '_' + lastQuizState.show_result : null;
-    if (stateKey !== lastKey) {
-      lastQuizState = data;
-      handleQuizUpdate(data);
-    }
-  }, 2000);
 }
 
-function handleQuizUpdate(quiz) {
+async function handleQuizUpdate(quiz) {
   const idx = quiz.current_question;
 
   // Game ended
@@ -338,8 +323,14 @@ function handleQuizUpdate(quiz) {
     return;
   }
 
-  // New question
-  if (idx >= 0 && idx < questions.length) {
+  // New question — refetch in case host added more after we joined
+  if (idx >= 0) {
+    if (idx >= questions.length) {
+      const { data: qs } = await sb.from('questions').select('*')
+        .eq('quiz_id', quizId).order('order_num');
+      questions = qs || [];
+    }
+    if (idx >= questions.length) return;
     currentQ = questions[idx];
     answered = false;
     document.getElementById('qProgress').textContent = `${idx+1} / ${questions.length}`;
@@ -381,7 +372,8 @@ async function submitAnswer(val) {
   answered = true;
   clearInterval(timerID);
 
-  const isCorrect = val === currentQ.answer;
+  lastAnswer = val;
+  const isCorrect = val !== null && val === currentQ.answer;
   const points    = isCorrect ? 1 : 0;
   myScore += points;
 
@@ -389,9 +381,11 @@ async function submitAnswer(val) {
   document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
 
   // Highlight selected
-  const btnId = currentQ.type === 'mc' ? 'opt' + val : 'opt' + (val === 'true' ? 'True' : 'False');
-  const btn = document.getElementById(btnId);
-  if (btn) btn.classList.add('selected');
+  if (val !== null) {
+    const btnId = currentQ.type === 'mc' ? 'opt' + val : 'opt' + (val === 'true' ? 'True' : 'False');
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add('selected');
+  }
 
   // Save to DB
   await sb.from('answers').insert({
@@ -407,12 +401,7 @@ async function submitAnswer(val) {
 // ── Show result after host reveals ──
 function showQuestionResult(q) {
   clearInterval(timerID);
-  const lastAnswerEl = document.querySelector('.opt-btn.selected');
-  const myAnswer = lastAnswerEl ? null : null; // we track via DB
-
-  // Determine correct/wrong from score increment approach
-  // Show answer screen
-  const isCorrect = document.querySelector('.opt-btn.selected') !== null;
+  const isCorrect = lastAnswer !== null && lastAnswer === q.answer;
 
   let ansText = '';
   if (q.type === 'mc') {
