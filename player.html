@@ -308,6 +308,14 @@ function subscribeToQuiz() {
       event: 'UPDATE', schema: 'public', table: 'quizzes',
       filter: `id=eq.${quizId}`
     }, payload => handleQuizUpdate(payload.new))
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'players',
+      filter: `id=eq.${playerId}`
+    }, payload => { myScore = payload.new.score; })
+    .on('postgres_changes', {
+      event: 'DELETE', schema: 'public', table: 'players',
+      filter: `id=eq.${playerId}`
+    }, () => { showScreen('sJoin'); playerId = null; myScore = 0; })
     .subscribe();
 }
 
@@ -316,6 +324,21 @@ async function handleQuizUpdate(quiz) {
 
   // Game ended
   if (idx === -2) { showFinal(); return; }
+
+  // Reset — host sent everyone back to start
+  if (idx === -1) {
+    clearInterval(timerID);
+    currentQ = null;
+    answered = false;
+    lastAnswer = null;
+    // Re-sync score from DB in case host reset scores
+    const { data: me } = await sb.from('players').select('score').eq('id', playerId).single();
+    if (me) myScore = me.score;
+    // If player was deleted (full reset), go back to join screen
+    if (!me) { showScreen('sJoin'); playerId = null; myScore = 0; return; }
+    showScreen('sWait');
+    return;
+  }
 
   // Show result for current question
   if (quiz.show_result && currentQ) {

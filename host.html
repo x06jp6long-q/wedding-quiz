@@ -365,13 +365,14 @@ function renderQList() {
     <div class="q-item">
       <span class="q-item-num">${i+1}</span>
       <span class="q-item-type">${q.type === 'mc' ? '選擇' : '是非'}</span>
-      <span class="q-item-text">${q.text}</span>
+      <span class="q-item-text">${escHtml(q.text)}</span>
       <button onclick="removeQuestion('${q.id}',${i})" style="background:none;border:none;color:var(--coral);cursor:pointer;font-size:1rem">✕</button>
     </div>
   `).join('');
 }
 
 async function removeQuestion(id, i) {
+  if (currentQIndex >= 0) { alert('遊戲進行中無法刪除題目，請先回到第一題或重置'); return; }
   await sb.from('questions').delete().eq('id', id);
   questions.splice(i, 1);
   questions.forEach((q, idx) => q.order_num = idx);
@@ -391,7 +392,7 @@ function renderGameControl() {
     ${q ? `
     <div class="current-q-display">
       <div class="cq-label">目前題目</div>
-      <div class="cq-text">${q.text}</div>
+      <div class="cq-text">${escHtml(q.text)}</div>
       <div class="cq-num">第 ${currentQIndex+1} 題 / 共 ${questions.length} 題</div>
       <div id="hostTimerDisplay" style="margin-top:8px;font-family:'Fredoka One',cursive;font-size:1.1rem;opacity:0.9"></div>
     </div>` : `
@@ -529,6 +530,10 @@ async function refreshLeaderboard() {
       <div class="lb-score">${p.score} 分</div>
     </div>
   `).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function openScoreboard() {

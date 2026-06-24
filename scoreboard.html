@@ -381,7 +381,7 @@ function showQuestionText(idx) {
   const pill = document.getElementById('questionPill');
   const display = document.getElementById('questionDisplay');
   if (idx >= 0 && idx < questions.length) {
-    display.textContent = questions[idx].text;
+    display.textContent = questions[idx].text;  // textContent is safe from XSS
     pill.style.display = '';
   } else {
     pill.style.display = 'none';
