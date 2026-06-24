@@ -177,6 +177,9 @@
           <div class="quiz-id-label" style="margin-top:10px">或掃描 QR Code</div>
           <canvas id="qrCanvas" style="margin-top:8px;border-radius:10px"></canvas>
         </div>
+        <div style="margin-bottom:10px">
+          <button class="btn btn-yellow btn-full" onclick="openScoreboard()">🏆 開啟投影排行榜</button>
+        </div>
         <div class="status-bar">
           <div class="status-dot live"></div>
           <span>題組已開放，等待賓客加入…</span>
@@ -402,6 +405,13 @@ function renderGameControl() {
         `}
       `}
     </div>
+    <hr class="section-divider">
+    <div class="card-title" style="font-size:0.95rem;color:var(--coral);margin-bottom:10px">🔄 重新開始</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gray" style="flex:1;font-size:0.82rem" onclick="resetScores()">🔢 僅重置分數</button>
+      <button class="btn btn-gray" style="flex:1;font-size:0.82rem" onclick="resetProgress()">⏪ 回到第一題</button>
+      <button class="btn btn-coral" style="flex:1;font-size:0.82rem" onclick="resetAll()">💣 全部重製</button>
+    </div>
   `;
 }
 
@@ -415,6 +425,40 @@ async function goToQuestion(idx) {
 async function showResults() {
   await sb.from('quizzes').update({ show_result: true }).eq('id', quizId);
   refreshLeaderboard();
+}
+
+async function resetScores() {
+  if (!confirm('確定要重置所有賓客的分數嗎？（題目進度不變）')) return;
+  await sb.from('players').update({ score: 0 }).eq('quiz_id', quizId);
+  await sb.from('answers').delete().eq('quiz_id', quizId);
+  refreshLeaderboard();
+  alert('✅ 所有分數已重置！');
+}
+
+async function resetProgress() {
+  if (!confirm('確定要回到第一題嗎？（分數也會重置）')) return;
+  currentQIndex = -1;
+  await sb.from('quizzes').update({ current_question: -1, show_result: false, is_active: true }).eq('id', quizId);
+  await sb.from('players').update({ score: 0 }).eq('quiz_id', quizId);
+  await sb.from('answers').delete().eq('quiz_id', quizId);
+  document.getElementById('statusBadge').textContent = '🟢 遊戲進行中';
+  renderGameControl();
+  refreshLeaderboard();
+  alert('✅ 已回到第一題，分數已重置！');
+}
+
+async function resetAll() {
+  if (!confirm('⚠️ 確定要全部重製嗎？\n將清除所有賓客、分數、作答紀錄，回到初始狀態。\n（題目和 QR Code 保留）')) return;
+  currentQIndex = -1;
+  await sb.from('answers').delete().eq('quiz_id', quizId);
+  await sb.from('players').delete().eq('quiz_id', quizId);
+  await sb.from('quizzes').update({ current_question: -1, show_result: false, is_active: true }).eq('id', quizId);
+  document.getElementById('statusBadge').textContent = '🟢 遊戲進行中';
+  document.getElementById('playerCount').textContent = '0';
+  document.getElementById('playerChips').innerHTML = '<div class="empty-state">還沒有人加入</div>';
+  renderGameControl();
+  refreshLeaderboard();
+  alert('✅ 已全部重製！賓客需重新加入。');
 }
 
 async function endGame() {
@@ -457,6 +501,11 @@ async function refreshLeaderboard() {
       <div class="lb-score">${p.score} 分</div>
     </div>
   `).join('');
+}
+
+function openScoreboard() {
+  const base = location.origin !== 'null' ? location.origin + location.pathname.replace(/[^/]*$/, '') : location.href.replace(/[^/]*$/, '');
+  window.open(`${base}scoreboard.html?quiz=${quizId}`, '_blank');
 }
 
 document.getElementById('statusBadge').textContent = '✅ 已連線';

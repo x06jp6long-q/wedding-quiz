@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏆 婚禮問答 - 即時排行榜</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pink: #FF6B9D; --yellow: #FFD93D; --mint: #6BCB77;
+    --sky: #4D96FF; --orange: #FF9F43; --purple: #A29BFE;
+    --coral: #FF7675; --dark: #2D3436;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #0a0a1a;
+    color: white; min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .bg-glow {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(255,107,157,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 50%, rgba(77,150,255,0.08) 0%, transparent 60%);
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 1200px; margin: 0 auto;
+    padding: 30px 40px;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+
+  /* Header */
+  .header {
+    text-align: center; margin-bottom: 24px; flex-shrink: 0;
+  }
+  .header-title {
+    font-family: 'Fredoka One', cursive; font-size: 2.8rem;
+    background: linear-gradient(135deg, var(--pink), var(--orange), var(--yellow));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header-sub {
+    font-size: 1rem; color: #718096; font-weight: 700; margin-top: 4px;
+  }
+
+  /* Status bar */
+  .status-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 20px; flex-shrink: 0;
+  }
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.06); border-radius: 50px;
+    padding: 10px 24px; font-weight: 800; font-size: 1rem;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .status-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .status-dot.waiting { background: var(--yellow); animation: pulse 1.5s infinite; }
+  .status-dot.playing { background: var(--mint); animation: pulse 1s infinite; }
+  .status-dot.reveal  { background: var(--sky); }
+  .status-dot.ended   { background: var(--coral); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .question-pill {
+    background: linear-gradient(135deg, var(--pink), var(--orange));
+    border-radius: 50px; padding: 10px 24px;
+    font-family: 'Fredoka One', cursive; font-size: 1.1rem;
+    max-width: 600px; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border: none;
+  }
+
+  /* Leaderboard */
+  .lb-wrapper {
+    flex: 1; overflow: hidden; display: flex; flex-direction: column;
+  }
+
+  .lb-list {
+    flex: 1; display: flex; flex-direction: column; gap: 10px;
+    overflow: hidden;
+  }
+
+  .lb-row {
+    display: flex; align-items: center; gap: 16px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 16px; padding: 16px 24px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: slideIn 0.4s ease-out both;
+  }
+  .lb-row:nth-child(1) {
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,159,67,0.1));
+    border-color: rgba(255,215,0,0.3);
+  }
+  .lb-row:nth-child(2) {
+    background: linear-gradient(135deg, rgba(192,192,192,0.1), rgba(200,200,200,0.05));
+    border-color: rgba(192,192,192,0.2);
+  }
+  .lb-row:nth-child(3) {
+    background: linear-gradient(135deg, rgba(205,127,50,0.1), rgba(205,127,50,0.05));
+    border-color: rgba(205,127,50,0.2);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-30px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .lb-rank {
+    font-family: 'Fredoka One', cursive; font-size: 2rem;
+    width: 60px; text-align: center; flex-shrink: 0;
+  }
+  .lb-rank-num {
+    font-family: 'Fredoka One', cursive; font-size: 1.4rem;
+    color: #718096; width: 60px; text-align: center; flex-shrink: 0;
+  }
+
+  .lb-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; flex-shrink: 0;
+  }
+  .lb-avatar-1 { background: linear-gradient(135deg, #FFD700, #FFA500); }
+  .lb-avatar-2 { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); }
+  .lb-avatar-3 { background: linear-gradient(135deg, #CD7F32, #A0522D); }
+  .lb-avatar-default { background: linear-gradient(135deg, var(--pink), var(--purple)); }
+
+  .lb-name {
+    flex: 1; font-weight: 800; font-size: 1.4rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .lb-score {
+    font-family: 'Fredoka One', cursive; font-size: 1.8rem;
+    color: var(--yellow); flex-shrink: 0;
+  }
+  .lb-score span {
+    font-size: 1rem; color: #718096;
+  }
+
+  .lb-bar {
+    width: 200px; height: 10px; background: rgba(255,255,255,0.06);
+    border-radius: 10px; overflow: hidden; flex-shrink: 0;
+  }
+  .lb-bar-fill {
+    height: 100%; border-radius: 10px;
+    background: linear-gradient(90deg, var(--pink), var(--orange));
+    transition: width 0.8s ease;
+  }
+
+  /* Score change animation */
+  .score-up {
+    animation: scoreUp 0.6s ease;
+  }
+  @keyframes scoreUp {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.3); color: var(--mint); }
+    100% { transform: scale(1); }
+  }
+
+  /* Empty / waiting */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; color: #4a5568;
+  }
+  .empty-emoji { font-size: 4rem; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  .empty-text { font-family: 'Fredoka One', cursive; font-size: 1.5rem; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex; gap: 20px; justify-content: center;
+    margin-bottom: 20px; flex-shrink: 0;
+  }
+  .stat-item {
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 800; font-size: 0.95rem; color: #a0aec0;
+  }
+  .stat-val {
+    font-family: 'Fredoka One', cursive; font-size: 1.2rem; color: white;
+  }
+
+  /* Confetti */
+  .confetti {
+    position: fixed; pointer-events: none; z-index: 999;
+    animation: confettiFall linear forwards; border-radius: 2px;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* Final screen */
+  .final-overlay {
+    position: fixed; inset: 0; z-index: 10;
+    background: rgba(10,10,26,0.95);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px; text-align: center;
+  }
+  .final-overlay.hidden { display: none; }
+  .final-crown { font-size: 6rem; animation: float 2s ease-in-out infinite; }
+  .final-title {
+    font-family: 'Fredoka One', cursive; font-size: 3rem;
+    background: linear-gradient(135deg, var(--yellow), var(--orange));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .final-winner {
+    font-family: 'Fredoka One', cursive; font-size: 2.5rem;
+  }
+  .final-score {
+    font-family: 'Fredoka One', cursive; font-size: 1.5rem;
+    color: var(--yellow);
+  }
+  .final-rest {
+    display: flex; flex-direction: column; gap: 8px; margin-top: 10px;
+  }
+  .final-rest-row {
+    font-weight: 800; font-size: 1.2rem; color: #a0aec0;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<div class="container">
+  <div class="header">
+    <div class="header-title" id="quizTitle">🏆 即時排行榜</div>
+    <div class="header-sub" id="quizSub">婚禮問答遊戲</div>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-pill">
+      <div class="status-dot waiting" id="statusDot"></div>
+      <span id="statusText">等待遊戲開始…</span>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <div class="stat-item">👥 參與人數 <span class="stat-val" id="statPlayers">0</span></div>
+    <div class="stat-item">📝 題目進度 <span class="stat-val" id="statProgress">0/0</span></div>
+  </div>
+
+  <div class="lb-wrapper">
+    <div class="lb-list" id="lbList">
+      <div class="empty-state">
+        <div class="empty-emoji">🎊</div>
+        <div class="empty-text">等待賓客加入…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="final-overlay hidden" id="finalOverlay">
+  <div class="final-crown">👑</div>
+  <div class="final-title">遊戲結束！</div>
+  <div class="final-winner" id="finalWinner"></div>
+  <div class="final-score" id="finalWinnerScore"></div>
+  <div class="final-rest" id="finalRest"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://yhxdmkuboujfbqrmfufw.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeGRta3Vib3VqZmJxcm1mdWZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMTg4NDEsImV4cCI6MjA5NDU5NDg0MX0.VQnf-6U8x4-S2-JFyRpsLL2Hfw99Yfo-1GNNXeNfYa0';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const params = new URLSearchParams(location.search);
+const quizId = params.get('quiz');
+
+const avatarEmojis = ['😊','🎉','🌟','🦊','🐼','🦄','🐸','🍀','🦋','🎈','🐱','🐶','🦁','🐯','🐻'];
+const medals = ['🥇','🥈','🥉'];
+
+let prevScores = {};
+let questions = [];
+let currentState = 'waiting';
+
+async function init() {
+  if (!quizId) {
+    document.getElementById('quizSub').textContent = '⚠️ 無效連結，請從主持人頁面取得排行榜網址';
+    return;
+  }
+
+  const { data: quiz } = await sb.from('quizzes').select('*').eq('id', quizId).single();
+  if (quiz) {
+    document.getElementById('quizTitle').textContent = '🏆 ' + quiz.title;
+  }
+
+  const { data: qs } = await sb.from('questions').select('*').eq('quiz_id', quizId).order('order_num');
+  questions = qs || [];
+
+  if (quiz) updateStatus(quiz);
+  refreshBoard();
+  subscribe();
+}
+
+function subscribe() {
+  sb.channel('sb-quiz-' + quizId)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes', filter: `id=eq.${quizId}` },
+      payload => {
+        updateStatus(payload.new);
+        refreshBoard();
+      })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `quiz_id=eq.${quizId}` },
+      () => refreshBoard())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'answers', filter: `quiz_id=eq.${quizId}` },
+      () => refreshBoard())
+    .subscribe();
+}
+
+function updateStatus(quiz) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  const bar = document.getElementById('statusBar');
+
+  dot.className = 'status-dot';
+
+  if (quiz.current_question === -2) {
+    currentState = 'ended';
+    dot.classList.add('ended');
+    text.textContent = '🏁 遊戲結束';
+  } else if (quiz.current_question < 0) {
+    currentState = 'waiting';
+    dot.classList.add('waiting');
+    text.textContent = '等待遊戲開始…';
+  } else if (quiz.show_result) {
+    currentState = 'reveal';
+    dot.classList.add('reveal');
+    text.textContent = `第 ${quiz.current_question + 1} 題 — 公布答案`;
+  } else {
+    currentState = 'playing';
+    dot.classList.add('playing');
+    text.textContent = `第 ${quiz.current_question + 1} 題 — 作答中…`;
+  }
+
+  // Refetch questions in case host added more
+  if (quiz.current_question >= 0 && quiz.current_question >= questions.length) {
+    sb.from('questions').select('*').eq('quiz_id', quizId).order('order_num')
+      .then(({ data }) => { questions = data || []; updateStatsBar(); });
+  }
+
+  updateStatsBar();
+}
+
+function updateStatsBar() {
+  // will be filled after board refresh
+}
+
+async function refreshBoard() {
+  const { data: players } = await sb.from('players').select('*')
+    .eq('quiz_id', quizId).order('score', { ascending: false });
+
+  if (!players || !players.length) return;
+
+  document.getElementById('statsBar').style.display = 'flex';
+  document.getElementById('statPlayers').textContent = players.length;
+  const totalQ = questions.length;
+  document.getElementById('statProgress').textContent =
+    currentState === 'waiting' ? `0/${totalQ}` :
+    currentState === 'ended' ? `${totalQ}/${totalQ}` :
+    `?/${totalQ}`;
+
+  const maxScore = Math.max(1, ...players.map(p => p.score));
+  const el = document.getElementById('lbList');
+
+  el.innerHTML = players.slice(0, 10).map((p, i) => {
+    const emoji = avatarEmojis[p.name.charCodeAt(0) % avatarEmojis.length];
+    const prevScore = prevScores[p.id] || 0;
+    const scored = p.score > prevScore;
+    const pct = Math.round((p.score / maxScore) * 100);
+    const avatarClass = i < 3 ? `lb-avatar-${i+1}` : 'lb-avatar-default';
+    const delay = i * 0.06;
+
+    return `
+      <div class="lb-row" style="animation-delay:${delay}s">
+        ${i < 3
+          ? `<div class="lb-rank">${medals[i]}</div>`
+          : `<div class="lb-rank-num">${i+1}</div>`}
+        <div class="lb-avatar ${avatarClass}">${emoji}</div>
+        <div class="lb-name">${escHtml(p.name)}</div>
+        <div class="lb-bar"><div class="lb-bar-fill" style="width:${pct}%"></div></div>
+        <div class="lb-score ${scored ? 'score-up' : ''}">${p.score} <span>分</span></div>
+      </div>`;
+  }).join('');
+
+  // Track scores for animation
+  players.forEach(p => { prevScores[p.id] = p.score; });
+
+  // Final screen
+  if (currentState === 'ended') {
+    showFinal(players);
+  } else {
+    document.getElementById('finalOverlay').classList.add('hidden');
+  }
+}
+
+function showFinal(players) {
+  const overlay = document.getElementById('finalOverlay');
+  overlay.classList.remove('hidden');
+
+  if (players.length > 0) {
+    document.getElementById('finalWinner').textContent = '🎉 ' + players[0].name + ' 🎉';
+    document.getElementById('finalWinnerScore').textContent = players[0].score + ' 分';
+  }
+
+  const rest = players.slice(1, 5);
+  document.getElementById('finalRest').innerHTML = rest.map((p, i) =>
+    `<div class="final-rest-row">${medals[i+1] || (i+2)} ${escHtml(p.name)} — ${p.score} 分</div>`
+  ).join('');
+
+  confetti();
+  setTimeout(confetti, 800);
+  setTimeout(confetti, 1600);
+}
+
+function confetti() {
+  const colors = ['#FF6B9D','#FFD93D','#6BCB77','#4D96FF','#FF9F43','#A29BFE'];
+  for (let i = 0; i < 30; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.cssText = `
+      left:${Math.random()*100}vw;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      width:${6+Math.random()*10}px; height:${6+Math.random()*10}px;
+      border-radius:${Math.random()>.5?'50%':'2px'};
+      animation-duration:${2+Math.random()*2}s;
+      animation-delay:${Math.random()*0.6}s;
+    `;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+init();
+</script>
+</body>
+</html>
