@@ -241,7 +241,8 @@
     <div class="result-big" id="resultEmoji">🎉</div>
     <div class="result-title" id="resultTitle">答對了！</div>
     <div class="result-answer" id="resultAnswer"></div>
-    <div class="result-score" id="resultScore">總分：0 分</div>
+    <div class="result-score" id="resultScore">+0 分</div>
+    <div style="font-family:'Fredoka One',cursive;font-size:1.2rem;color:#888;margin-top:4px" id="resultTotal">總分：0 分</div>
     <div class="next-hint">等待主持人出下一題…</div>
   </div>
 </div>
@@ -272,7 +273,9 @@ let myScore    = 0;
 let currentQ   = null;
 let answered   = false;
 let lastAnswer = null;
+let lastPoints = 0;
 let timerID    = null;
+let timeLeft   = 0;
 let questions  = [];
 let quizTimer  = 20;
 
@@ -405,8 +408,10 @@ async function submitAnswer(val) {
 
   lastAnswer = val;
   const isCorrect = val !== null && val === currentQ.answer;
-  const points    = isCorrect ? 1 : 0;
-  myScore += points;
+  const basePoints = isCorrect ? 100 : 0;
+  const timeBonus = isCorrect ? Math.round(timeLeft / quizTimer * 100) : 0;
+  lastPoints = basePoints + timeBonus;
+  myScore += lastPoints;
 
   // Disable all buttons
   document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
@@ -445,7 +450,8 @@ function showQuestionResult(q) {
   document.getElementById('resultTitle').textContent  = isCorrect ? '答對了！' : '答錯了…';
   document.getElementById('resultTitle').className    = 'result-title ' + (isCorrect ? 'correct' : 'wrong');
   document.getElementById('resultAnswer').textContent = ansText;
-  document.getElementById('resultScore').textContent  = `總分：${myScore} 分`;
+  document.getElementById('resultScore').textContent  = `${isCorrect ? `+${lastPoints} 分（基礎 100 + 速度 ${lastPoints - 100}）` : '+0 分'}`;
+  document.getElementById('resultTotal').textContent  = `總分：${myScore} 分`;
 
   if (isCorrect) confetti();
   showScreen('sResult');
@@ -455,10 +461,12 @@ function showQuestionResult(q) {
 function startTimer(seconds) {
   clearInterval(timerID);
   let t = seconds;
+  timeLeft = t;
   const circ = 138.2;
   updateTimer(t, seconds, circ);
   timerID = setInterval(() => {
     t--;
+    timeLeft = Math.max(0, t);
     updateTimer(t, seconds, circ);
     if (t <= 0) {
       clearInterval(timerID);
