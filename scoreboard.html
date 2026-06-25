@@ -226,6 +226,16 @@
     font-weight: 800; font-size: 1.2rem; color: #a0aec0;
   }
 
+  /* Player chips in waiting */
+  .player-chip-sb {
+    background: rgba(255,255,255,0.08); border-radius: 20px; padding: 6px 16px;
+    font-size: 0.9rem; font-weight: 700; color: white;
+    display: flex; align-items: center; gap: 6px;
+    animation: chipIn 0.3s ease;
+  }
+  @keyframes chipIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+  .chip-dot { width: 8px; height: 8px; background: var(--mint); border-radius: 50%; }
+
   /* QR overlay */
   #qrArea img { cursor: pointer; transition: transform 0.2s; }
   #qrArea img:hover { transform: scale(1.1); }
@@ -282,12 +292,23 @@
     </div>
   </div>
 
+  <!-- QR Welcome Section (waiting state) -->
+  <div id="qrWelcome" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+    <div style="font-family:'Microsoft JhengHei','Fredoka One',cursive;font-size:2rem;color:white">📱 掃描加入遊戲</div>
+    <img id="qrBig" src="" style="width:min(45vh,45vw);height:min(45vh,45vw);border-radius:20px;border:5px solid rgba(255,255,255,0.2)">
+    <div id="qrUrlText" style="font-size:0.9rem;color:#718096;font-weight:700;word-break:break-all;max-width:80%;text-align:center"></div>
+    <div style="margin-top:8px">
+      <div style="font-family:'Microsoft JhengHei','Fredoka One',cursive;font-size:1.1rem;color:var(--yellow)" id="waitingPlayerCount">👥 已加入 0 位</div>
+    </div>
+    <div class="player-join-list" id="waitingPlayerList" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:90%;margin-top:4px"></div>
+  </div>
+
   <div class="stats-bar" id="statsBar" style="display:none">
     <div class="stat-item">👥 參與人數 <span class="stat-val" id="statPlayers">0</span></div>
     <div class="stat-item">📝 題目進度 <span class="stat-val" id="statProgress">0/0</span></div>
   </div>
 
-  <div class="lb-wrapper">
+  <div class="lb-wrapper" id="lbWrapper" style="display:none">
     <div class="lb-list" id="lbList">
       <div class="empty-state">
         <div class="empty-emoji">🎊</div>
@@ -336,12 +357,18 @@ async function init() {
     return;
   }
 
-  // Generate QR code for player join link
+  // Generate QR codes
   const playerURL = location.href.replace('scoreboard.html', 'player.html');
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(playerURL)}`;
+
+  // Big QR in welcome section
+  document.getElementById('qrBig').src = qrSrc;
+  document.getElementById('qrUrlText').textContent = playerURL;
+
+  // Small QR in header (shown during game)
   const qrImg = document.createElement('img');
   qrImg.src = qrSrc;
-  qrImg.style.cssText = 'width:100px;height:100px;border-radius:10px;border:3px solid rgba(255,255,255,0.2)';
+  qrImg.style.cssText = 'width:80px;height:80px;border-radius:10px;border:3px solid rgba(255,255,255,0.2)';
   qrImg.onclick = () => {
     document.getElementById('qrOverlayImg').src = qrSrc;
     document.getElementById('qrOverlayUrl').textContent = playerURL;
@@ -389,29 +416,40 @@ function updateStatus(quiz) {
   const questionPill = document.getElementById('questionPill');
   const questionDisplay = document.getElementById('questionDisplay');
 
+  const qrWelcome = document.getElementById('qrWelcome');
+  const lbWrapper = document.getElementById('lbWrapper');
+
   if (quiz.current_question === -2) {
     currentState = 'ended';
     dot.classList.add('ended');
     text.textContent = '🏁 遊戲結束';
     stopTimer();
     questionPill.style.display = 'none';
+    qrWelcome.style.display = 'none';
+    lbWrapper.style.display = 'flex';
   } else if (quiz.current_question < 0) {
     currentState = 'waiting';
     dot.classList.add('waiting');
     text.textContent = '等待遊戲開始…';
     stopTimer();
     questionPill.style.display = 'none';
+    qrWelcome.style.display = 'flex';
+    lbWrapper.style.display = 'none';
   } else if (quiz.show_result) {
     currentState = 'reveal';
     dot.classList.add('reveal');
     text.textContent = `第 ${quiz.current_question + 1} 題 — 公布答案`;
     stopTimer();
     showQuestionText(quiz.current_question);
+    qrWelcome.style.display = 'none';
+    lbWrapper.style.display = 'flex';
   } else {
     currentState = 'playing';
     dot.classList.add('playing');
     text.textContent = `第 ${quiz.current_question + 1} 題 — 作答中…`;
     showQuestionText(quiz.current_question);
+    qrWelcome.style.display = 'none';
+    lbWrapper.style.display = 'flex';
     if (quiz.current_question !== lastQuestionIdx) {
       lastQuestionIdx = quiz.current_question;
       startTimer(quizTimer);
@@ -467,6 +505,16 @@ function stopTimer() {
 async function refreshBoard() {
   const { data: players } = await sb.from('players').select('*')
     .eq('quiz_id', quizId).order('score', { ascending: false });
+
+  // Update waiting player list
+  const wpCount = document.getElementById('waitingPlayerCount');
+  const wpList = document.getElementById('waitingPlayerList');
+  if (wpCount && players) {
+    wpCount.textContent = `👥 已加入 ${players.length} 位`;
+    wpList.innerHTML = players.map(p =>
+      `<div class="player-chip-sb"><div class="chip-dot"></div>${escHtml(p.name)}</div>`
+    ).join('');
+  }
 
   if (!players || !players.length) {
     document.getElementById('lbList').innerHTML = '<div class="empty-state"><div class="empty-emoji">🎊</div><div class="empty-text">等待賓客加入…</div></div>';
