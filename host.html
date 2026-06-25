@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🎮 婚禮問答 - 主持人控制台</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -219,6 +220,12 @@
         </div>
       </div>
       <button class="btn btn-mint btn-full" style="margin-top:12px" onclick="addQuestion()">＋ 新增此題</button>
+
+      <hr class="section-divider">
+      <div class="card-title" style="margin-bottom:10px">📥 從 Excel 匯入題目</div>
+      <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+      <button class="btn btn-yellow btn-full" onclick="document.getElementById('excelFile').click()">📂 選擇 Excel 檔案匯入</button>
+      <div id="importStatus" style="font-size:0.82rem;color:#a0aec0;font-weight:700;margin-bottom:10px"></div>
 
       <hr class="section-divider">
       <div class="card-title" style="margin-bottom:10px">📋 題目列表 (<span id="qCount">0</span>)</div>
@@ -532,6 +539,62 @@ async function refreshLeaderboard() {
       <div class="lb-score">${p.score} 分</div>
     </div>
   `).join('');
+}
+
+async function importExcel(event) {
+  if (!quizId) { alert('請先建立題組！'); return; }
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('importStatus');
+  statusEl.textContent = '⏳ 讀取中…';
+
+  const data = await file.arrayBuffer();
+  const wb = XLSX.read(data, { type: 'array' });
+
+  const sheetName = wb.SheetNames.find(n => n.includes('題目')) || wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+  // Skip header row
+  const dataRows = rows.slice(1).filter(r => r[0] && r[1]);
+  if (!dataRows.length) { statusEl.textContent = '❌ 沒有找到題目資料'; return; }
+
+  statusEl.textContent = `⏳ 匯入 ${dataRows.length} 題中…`;
+  let success = 0, fail = 0;
+
+  for (let i = 0; i < dataRows.length; i++) {
+    const r = dataRows[i];
+    const type = String(r[0]).trim().toLowerCase();
+    const text = String(r[1]).trim();
+    const answer = String(r[6]).trim();
+
+    if (!text) { fail++; continue; }
+
+    let qData = { quiz_id: quizId, order_num: questions.length + success, type, text, answer };
+
+    if (type === 'mc') {
+      const A = String(r[2] || '').trim();
+      const B = String(r[3] || '').trim();
+      const C = String(r[4] || '').trim();
+      const D = String(r[5] || '').trim();
+      if (!A || !B || !C || !D) { fail++; statusEl.textContent = `⚠️ 第 ${i+2} 列選項不完整，已跳過`; continue; }
+      if (!['A','B','C','D'].includes(answer)) { fail++; statusEl.textContent = `⚠️ 第 ${i+2} 列答案格式錯誤`; continue; }
+      qData.choices = { A, B, C, D };
+    } else if (type === 'tf') {
+      if (!['true','false'].includes(answer)) { fail++; statusEl.textContent = `⚠️ 第 ${i+2} 列答案需為 true/false`; continue; }
+    } else {
+      fail++; continue;
+    }
+
+    const { data: inserted, error } = await sb.from('questions').insert(qData).select().single();
+    if (error) { fail++; } else { questions.push(inserted); success++; }
+  }
+
+  renderQList();
+  renderGameControl();
+  event.target.value = '';
+  statusEl.textContent = `✅ 匯入完成！成功 ${success} 題${fail ? `，失敗 ${fail} 題` : ''}`;
 }
 
 function escHtml(s) {
