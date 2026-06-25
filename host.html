@@ -447,12 +447,27 @@ function startHostTimer() {
   hostTimerID = setInterval(() => {
     t--;
     renderHostTimer(t);
-    if (t <= 0) clearInterval(hostTimerID);
+    if (t <= 0) {
+      clearInterval(hostTimerID);
+      autoAdvance();
+    }
   }, 1000);
 }
 function renderHostTimer(t) {
   const el = document.getElementById('hostTimerDisplay');
   if (el) el.textContent = t > 0 ? `⏱ 剩餘 ${t} 秒` : '⏱ 時間到！';
+}
+
+async function autoAdvance() {
+  // Show answer first, then wait 5 seconds, then next question or end
+  await showResults();
+  setTimeout(async () => {
+    if (currentQIndex < questions.length - 1) {
+      goToQuestion(currentQIndex + 1);
+    } else {
+      endGame();
+    }
+  }, 5000);
 }
 
 async function showResults() {
