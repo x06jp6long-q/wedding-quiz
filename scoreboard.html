@@ -14,7 +14,7 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Nunito', sans-serif;
+    font-family: 'Microsoft JhengHei', 'Nunito', sans-serif;
     background: #0a0a1a;
     color: white; min-height: 100vh;
     overflow: hidden;
@@ -39,7 +39,7 @@
     text-align: center; margin-bottom: 24px; flex-shrink: 0;
   }
   .header-title {
-    font-family: 'Fredoka One', cursive; font-size: 2.8rem;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 2.8rem;
     background: linear-gradient(135deg, var(--pink), var(--orange), var(--yellow));
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
@@ -70,7 +70,7 @@
   .question-pill {
     background: linear-gradient(135deg, var(--pink), var(--orange));
     border-radius: 50px; padding: 10px 24px;
-    font-family: 'Fredoka One', cursive; font-size: 1.1rem;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 1.1rem;
     max-width: 600px; text-align: center;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     border: none;
@@ -113,11 +113,11 @@
   }
 
   .lb-rank {
-    font-family: 'Fredoka One', cursive; font-size: 2rem;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 2rem;
     width: 60px; text-align: center; flex-shrink: 0;
   }
   .lb-rank-num {
-    font-family: 'Fredoka One', cursive; font-size: 1.4rem;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 1.4rem;
     color: #718096; width: 60px; text-align: center; flex-shrink: 0;
   }
 
@@ -137,7 +137,7 @@
   }
 
   .lb-score {
-    font-family: 'Fredoka One', cursive; font-size: 1.8rem;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 1.8rem;
     color: var(--yellow); flex-shrink: 0;
   }
   .lb-score span {
@@ -172,7 +172,7 @@
   }
   .empty-emoji { font-size: 4rem; animation: float 3s ease-in-out infinite; }
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-  .empty-text { font-family: 'Fredoka One', cursive; font-size: 1.5rem; }
+  .empty-text { font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 1.5rem; }
 
   /* Stats bar */
   .stats-bar {
@@ -184,7 +184,7 @@
     font-weight: 800; font-size: 0.95rem; color: #a0aec0;
   }
   .stat-val {
-    font-family: 'Fredoka One', cursive; font-size: 1.2rem; color: white;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 1.2rem; color: white;
   }
 
   /* Confetti */
@@ -208,15 +208,15 @@
   .final-overlay.hidden { display: none; }
   .final-crown { font-size: 6rem; animation: float 2s ease-in-out infinite; }
   .final-title {
-    font-family: 'Fredoka One', cursive; font-size: 3rem;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 3rem;
     background: linear-gradient(135deg, var(--yellow), var(--orange));
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
   .final-winner {
-    font-family: 'Fredoka One', cursive; font-size: 2.5rem;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 2.5rem;
   }
   .final-score {
-    font-family: 'Fredoka One', cursive; font-size: 1.5rem;
+    font-family: 'Microsoft JhengHei', 'Fredoka One', cursive; font-size: 1.5rem;
     color: var(--yellow);
   }
   .final-rest {
@@ -232,9 +232,12 @@
 <div class="bg-glow"></div>
 
 <div class="container">
-  <div class="header">
-    <div class="header-title" id="quizTitle">🏆 即時排行榜</div>
-    <div class="header-sub" id="quizSub">婚禮問答遊戲</div>
+  <div class="header" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div class="header-title" id="quizTitle">🏆 即時排行榜</div>
+      <div class="header-sub" id="quizSub">婚禮問答遊戲</div>
+    </div>
+    <div id="qrArea" style="flex-shrink:0"></div>
   </div>
 
   <div class="status-bar" id="statusBar">
@@ -296,6 +299,13 @@ async function init() {
     document.getElementById('quizSub').textContent = '⚠️ 無效連結，請從主持人頁面取得排行榜網址';
     return;
   }
+
+  // Generate QR code for player join link
+  const playerURL = location.href.replace('scoreboard.html', 'player.html');
+  const qrImg = document.createElement('img');
+  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(playerURL)}`;
+  qrImg.style.cssText = 'width:100px;height:100px;border-radius:10px;border:3px solid rgba(255,255,255,0.2)';
+  document.getElementById('qrArea').appendChild(qrImg);
 
   const { data: quiz } = await sb.from('quizzes').select('*').eq('id', quizId).single();
   if (quiz) {
